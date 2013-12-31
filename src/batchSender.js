@@ -24,6 +24,27 @@
     };
 
     _.extend(BatchSender.prototype, {
+
+        send: function(events, options) {
+            this._cleanEvents(events);
+
+            this._eventQueue = this._eventQueue.concat(events);
+
+            if (options && options.purge) {
+                while (this._eventQueue.length > 0) {
+                    this._sendBatch();
+                }
+            } else {
+                while (this._canSendBatch()) {
+                    this._sendBatch();
+                }
+            }
+        },
+
+        getPendingEvents: function() {
+            return this._eventQueue;
+        },
+        
         /**
          * Removes properties on the event objects that should not get sent out
          * on the wire. The events to remove are specified in the keysToIgnore config property
@@ -200,26 +221,6 @@
                 document.body.appendChild(img);
                 img.src = fullUrl;
             }
-        },
-
-        send: function(events, options) {
-            this._cleanEvents(events);
-
-            this._eventQueue = this._eventQueue.concat(events);
-
-            if (options && options.purge) {
-                while (this._eventQueue.length > 0) {
-                    this._sendBatch();
-                }
-            } else {
-                while (this._canSendBatch()) {
-                    this._sendBatch();
-                }
-            }
-        },
-
-        getPendingEvents: function() {
-            return this._eventQueue;
         }
     });
 

@@ -101,13 +101,211 @@
          * @param status the event's status for each of the pending events
          * @param defaultParams Default parameters that are sent with each request
          */
-        startNewSession: function(options) {
+        startSession: function(options) {
             this._concludePendingEvents(options.status);
             this.sendAllRemainingEvents();
             this._currentParentEvents = [];
             this._defaultParams = options.defaultParams;
 
             this._errorCount = 0;
+        },
+
+        /**
+         * Handles the action client metrics message. Starts and completes a client metric event
+         */
+        recordAction: function(opts, eOpts) {
+            options = this._translateMessageVersion(arguments);
+
+            var cmp = options.component;
+            delete options.component;
+            var eventId = this._getUniqueId();
+            var startTime = options.startTime || new Date().getTime();
+
+            var action = this._startEvent(_.defaults({
+                eType: 'action',
+                cmp: cmp,
+                cmpH: this._getHierarchyString(cmp),
+                eDesc: options.description,
+                cmpId: this._getComponentId(cmp),
+                eId: eventId,
+                tId: eventId,
+                status: 'Ready',
+                cmpType: this._getFromHandlers(cmp, 'getComponentType')
+            }, options.miscData));
+
+            this._currentUserActionEventId = action.eId;
+
+            // special case, action events are synchronous, they should have same start and stop
+            action.start = action.stop = this._convertToRelativeTime(startTime);
+
+            this._finishEvent(action);
+        },
+
+        recordError: function(errorInfo) {
+            if (this._currentUserActionEventId && this._errorCount < this.errorLimit) {
+                ++this._errorCount;
+
+                errorInfo = errorInfo || 'unknown error';
+
+                var errorEvent = this._startEvent({
+                    eType: 'error',
+                    error: errorInfo.substring(0, MAX_ERROR_LENGTH),
+                    eId: this._getUniqueId(),
+                    tId: this._currentUserActionEventId
+                });
+
+                errorEvent.start = errorEvent.stop = this._getRelativeTime();
+
+                this._finishEvent(errorEvent);
+
+                // dont want errors to get left behind in the batch, force it to be sent now
+                this.sendAllRemainingEvents();
+            }
+        },
+
+        /**
+         * Handles the beginLoad client metrics message. Starts an event
+         */
+        beginLoad: function(opts, eOpts) {
+            options = this._translateMessageVersion(arguments);
+
+            var cmp = options.component;
+            delete options.component;
+            if (!this._currentUserActionEventId) {
+                return;
+            }
+
+            if (cmp[_currentEventId + 'load']) {
+                // already an in flight load event, so going to bail on this one
+                return;
+            }
+
+            var startTime = options.startTime || new Date().getTime();
+
+            var eventId = this._getUniqueId();
+            cmp[_currentEventId + 'load'] = eventId;
+
+            var event = _.defaults({
+                eType: 'load',
+                cmp: cmp,
+                cmpH: this._getHierarchyString(cmp),
+                eDesc: options.description,
+                cmpId: this._getComponentId(cmp),
+                eId: eventId,
+                cmpType: this._getFromHandlers(cmp, 'getComponentType'),
+                tId: this._currentUserActionEventId,
+                pId: this._findParentId(cmp, this._currentUserActionEventId),
+                start: this._convertToRelativeTime(startTime)
+            }, options.miscData);
+            this._startEvent(event);
+        },
+
+        /**
+         * Handles the endLoad client metrics message. Finishes an event
+         */
+        endLoad: function(opts) {
+            options = this._translateMessageVersion(arguments);
+
+            var cmp = options.component;
+            delete options.component;
+            if (!this._currentUserActionEventId) {
+                return;
+            }
+
+            var eventId = cmp[_currentEventId + 'load'];
+
+            if (!eventId) {
+                // load end found without a load begin, not much can be done with it
+                return;
+            }
+
+            delete cmp[_currentEventId + 'load'];
+
+            var event = this._findPendingEvent(eventId);
+
+            if (!event) {
+                // if we didn't find a pending event, then the load begin happened before the
+                // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
+                // just ignoring it.
+                return;
+            }
+
+            options.stop = this._convertToRelativeTime(options.stopTime || new Date().getTime());
+
+            this._finishEvent(event, _.extend({
+                status: 'Ready'
+            }, options));
+        },
+
+        /**
+         * Handler for before Ajax requests go out. Starts an event for the request,
+         * Adds headers to the ajax request that links the request with the client metrics data
+         */
+        beginDataRequest: function(connection, options) {
+            var requester = this._findRequester(connection, options);
+
+            if (requester && this._currentUserActionEventId) {
+                var eventId = this._getUniqueId();
+                var traceId = this._currentUserActionEventId;
+                var parentId = this._findParentId(requester, this._currentUserActionEventId);
+                var ajaxRequestId = this._getUniqueId();
+                options[_ajaxRequestId] = ajaxRequestId;
+                requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
+
+                this._startEvent({
+                    eType: 'dataRequest',
+                    cmp: requester,
+                    cmpH: this._getHierarchyString(requester),
+                    url: this._getUrl(options.url),
+                    cmpType: this._getFromHandlers(requester, 'getComponentType'),
+                    cmpId: this._getComponentId(requester),
+                    eId: eventId,
+                    tId: traceId,
+                    pId: parentId
+                });
+
+                // NOTE: this looks wrong, but it's not
+                // This client side dataRequest event is going to be
+                // the "parent" of the server side event that responds.
+                // So in the request headers, sending the current event Id as
+                // the parent Id.
+                connection.defaultHeaders = {
+                    'X-Trace-Id': traceId,
+                    'X-Parent-Id': eventId
+                };
+            } else {
+                connection.defaultHeaders = {};
+            }
+        },
+
+        /**
+         * handler for after the Ajax request has finished. Finishes an event for the data request
+         */
+        endDataRequest: function(connection, response, options) {
+            var requester = this._findRequester(connection, options);
+
+            if (requester && this._currentUserActionEventId) {
+                var ajaxRequestId = options[_ajaxRequestId];
+
+                var eventId = requester[_currentEventId + 'dataRequest' + ajaxRequestId];
+
+                var event = this._findPendingEvent(eventId);
+                if (!event) {
+                    // if we didn't find a pending event, then the request started before the
+                    // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
+                    // just ignoring it.
+                    return;
+                }
+                event.status = 'Ready';
+
+                var rallyRequestId = this._getRallyRequestId(response);
+
+                if (rallyRequestId) {
+                    event.rallyRequestId = rallyRequestId;
+                }
+
+                this._finishEvent(event);
+            }
         },
 
         /**
@@ -261,142 +459,6 @@
             return _.compact(names).join(':');
         },
 
-        /**
-         * Handles the action start session message. Triggers a metrics start new session
-         * @param status passed through to startNewSession
-         * @private
-         */
-        startSession: function(status, defaultParams) {
-            this.startNewSession(status, defaultParams);
-        },
-
-        /**
-         * Handles the action client metrics message. Starts and completes a client metric event
-         */
-        recordAction: function(opts, eOpts) {
-            options = this._translateMessageVersion(arguments);
-
-            var cmp = options.component;
-            delete options.component;
-            var eventId = this._getUniqueId();
-            var startTime = options.startTime || new Date().getTime();
-
-            var action = this._startEvent(_.defaults({
-                eType: 'action',
-                cmp: cmp,
-                cmpH: this._getHierarchyString(cmp),
-                eDesc: options.description,
-                cmpId: this._getComponentId(cmp),
-                eId: eventId,
-                tId: eventId,
-                status: 'Ready',
-                cmpType: this._getFromHandlers(cmp, 'getComponentType')
-            }, options.miscData));
-
-            this._currentUserActionEventId = action.eId;
-
-            // special case, action events are synchronous, they should have same start and stop
-            action.start = action.stop = this._convertToRelativeTime(startTime);
-
-            this._finishEvent(action);
-        },
-
-        recordError: function(errorInfo) {
-            if (this._currentUserActionEventId && this._errorCount < this.errorLimit) {
-                ++this._errorCount;
-
-                errorInfo = errorInfo || 'unknown error';
-
-                var errorEvent = this._startEvent({
-                    eType: 'error',
-                    error: errorInfo.substring(0, MAX_ERROR_LENGTH),
-                    eId: this._getUniqueId(),
-                    tId: this._currentUserActionEventId
-                });
-
-                errorEvent.start = errorEvent.stop = this._getRelativeTime();
-
-                this._finishEvent(errorEvent);
-
-                // dont want errors to get left behind in the batch, force it to be sent now
-                this.sendAllRemainingEvents();
-            }
-        },
-
-        /**
-         * Handles the beginLoad client metrics message. Starts an event
-         */
-        beginLoad: function(opts, eOpts) {
-            options = this._translateMessageVersion(arguments);
-
-            var cmp = options.component;
-            delete options.component;
-            if (!this._currentUserActionEventId) {
-                return;
-            }
-
-            if (cmp[_currentEventId + 'load']) {
-                // already an in flight load event, so going to bail on this one
-                return;
-            }
-
-            var startTime = options.startTime || new Date().getTime();
-
-            var eventId = this._getUniqueId();
-            cmp[_currentEventId + 'load'] = eventId;
-
-            var event = _.defaults({
-                eType: 'load',
-                cmp: cmp,
-                cmpH: this._getHierarchyString(cmp),
-                eDesc: options.description,
-                cmpId: this._getComponentId(cmp),
-                eId: eventId,
-                cmpType: this._getFromHandlers(cmp, 'getComponentType'),
-                tId: this._currentUserActionEventId,
-                pId: this._findParentId(cmp, this._currentUserActionEventId),
-                start: this._convertToRelativeTime(startTime)
-            }, options.miscData);
-            this._startEvent(event);
-        },
-
-        /**
-         * Handles the endLoad client metrics message. Finishes an event
-         */
-        endLoad: function(opts) {
-            options = this._translateMessageVersion(arguments);
-
-            var cmp = options.component;
-            delete options.component;
-            if (!this._currentUserActionEventId) {
-                return;
-            }
-
-            var eventId = cmp[_currentEventId + 'load'];
-
-            if (!eventId) {
-                // load end found without a load begin, not much can be done with it
-                return;
-            }
-
-            delete cmp[_currentEventId + 'load'];
-
-            var event = this._findPendingEvent(eventId);
-
-            if (!event) {
-                // if we didn't find a pending event, then the load begin happened before the
-                // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
-                // just ignoring it.
-                return;
-            }
-
-            options.stop = this._convertToRelativeTime(options.stopTime || new Date().getTime());
-
-            this._finishEvent(event, _.extend({
-                status: 'Ready'
-            }, options));
-        },
-
         _translateMessageVersion: function(messageArgs) {
             messageArgs = _.toArray(messageArgs);
 
@@ -479,82 +541,11 @@
         },
 
         /**
-         * Handler for before Ajax requests go out. Starts an event for the request,
-         * Adds headers to the ajax request that links the request with the client metrics data
-         */
-        beginDataRequest: function(connection, options) {
-            var requester = this._findRequester(connection, options);
-
-            if (requester && this._currentUserActionEventId) {
-                var eventId = this._getUniqueId();
-                var traceId = this._currentUserActionEventId;
-                var parentId = this._findParentId(requester, this._currentUserActionEventId);
-                var ajaxRequestId = this._getUniqueId();
-                options[_ajaxRequestId] = ajaxRequestId;
-                requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
-
-                this._startEvent({
-                    eType: 'dataRequest',
-                    cmp: requester,
-                    cmpH: this._getHierarchyString(requester),
-                    url: this._getUrl(options.url),
-                    cmpType: this._getFromHandlers(requester, 'getComponentType'),
-                    cmpId: this._getComponentId(requester),
-                    eId: eventId,
-                    tId: traceId,
-                    pId: parentId
-                });
-
-                // NOTE: this looks wrong, but it's not
-                // This client side dataRequest event is going to be
-                // the "parent" of the server side event that responds.
-                // So in the request headers, sending the current event Id as
-                // the parent Id.
-                connection.defaultHeaders = {
-                    'X-Trace-Id': traceId,
-                    'X-Parent-Id': eventId
-                };
-            } else {
-                connection.defaultHeaders = {};
-            }
-        },
-
-        /**
          * Finds the RallyRequestId, if any, in the response sent back from the server
          * @param response the response that came back from an Ajax request
          */
         _getRallyRequestId: function(response) {
             return response && response.getResponseHeader && response.getResponseHeader.RallyRequestID;
-        },
-
-        /**
-         * handler for after the Ajax request has finished. Finishes an event for the data request
-         */
-        endDataRequest: function(connection, response, options) {
-            var requester = this._findRequester(connection, options);
-
-            if (requester && this._currentUserActionEventId) {
-                var ajaxRequestId = options[_ajaxRequestId];
-
-                var eventId = requester[_currentEventId + 'dataRequest' + ajaxRequestId];
-
-                var event = this._findPendingEvent(eventId);
-                if (!event) {
-                    // if we didn't find a pending event, then the request started before the
-                    // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
-                    // just ignoring it.
-                    return;
-                }
-                event.status = 'Ready';
-
-                var rallyRequestId = this._getRallyRequestId(response);
-
-                if (rallyRequestId) {
-                    event.rallyRequestId = rallyRequestId;
-                }
-
-                this._finishEvent(event);
-            }
         },
 
         /**
