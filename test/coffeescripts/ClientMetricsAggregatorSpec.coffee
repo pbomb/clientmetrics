@@ -118,13 +118,13 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
   describe 'startSession message', ->
     it "should start a new session", ->
       aggregator = @createAggregator()
-      startNewSessionStub = @stub(aggregator, "startNewSession")
+      startSessionStub = @stub(aggregator, "startSession")
 
       status = 'a status'
       defaultParams = foo: 'bar'
       
       @startSession aggregator, status, defaultParams
-      expect(startNewSessionStub).toHaveBeenCalledWith status, defaultParams
+      expect(startSessionStub).toHaveBeenCalledWith status, defaultParams
 
   describe 'data requests', ->
     it "should trim the request url correctly", ->
@@ -334,7 +334,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
     it "resets the error count whenever a new session starts", ->
       aggregator = @createAggregator()
       aggregator._errorCount = 2
-      aggregator.startNewSession "newsession"
+      aggregator.startSession "newsession"
       expect(aggregator._errorCount).toBe 0
   
     it "truncates long error info", ->
@@ -367,7 +367,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       hash = "/some/hash"
       defaultParams = hash: hash
       
-      aggregator.startNewSession { status: "Session 1", defaultParams }
+      aggregator.startSession { status: "Session 1", defaultParams }
       @recordAction(aggregator)
   
       actionEvent = @findActionEvent()

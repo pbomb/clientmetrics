@@ -1,8 +1,6 @@
 (function() {
     var _ = require('underscore');
 
-    var clientMetricsUrl = "https://trust.rallydev.com/beacon/";
-
     /**
      * @class Rally.clientmetrics.BatchSender
      * @private
@@ -13,12 +11,18 @@
      * request.
      *
      * @constructor
+     * @param {Object} config Configuration object
+     * @param {String[]} [config.keysToIgnore = []] Which properties on events should not be sent
+     * @param {Number} [config.minLength = 0] The minimum length of the generated URL that can be sent.
+     * @param {Number} [config.maxLength = 0] The maximum length of the generated URL that can be sent.
+     * @param {String} [config.beaconUrl = "https://trust.rallydev.com/beacon/"] URL where the beacon is located.
      */
     var BatchSender = function(config) {
         _.defaults(this, config, {
             keysToIgnore: [],
             minLength: 0,
             maxLength: 1000,
+            beaconUrl: "https://trust.rallydev.com/beacon/"
         });
         this._eventQueue = [];
     };
@@ -26,9 +30,9 @@
     _.extend(BatchSender.prototype, {
 
         send: function(events, options) {
-            this._cleanEvents(events);
+            var cleanedEvents = _.map(events, this._cleanedEvents, this);
 
-            this._eventQueue = this._eventQueue.concat(events);
+            this._eventQueue = this._eventQueue.concat(cleanedEvents);
 
             if (options && options.purge) {
                 while (this._eventQueue.length > 0) {
@@ -45,17 +49,8 @@
             return this._eventQueue;
         },
         
-        /**
-         * Removes properties on the event objects that should not get sent out
-         * on the wire. The events to remove are specified in the keysToIgnore config property
-         * @param events the events to clean
-         */
-        _cleanEvents: function(events) {
-            _.each(events, function(event) {
-                _.each(this.keysToIgnore, function(key) {
-                    delete event[key];
-                });
-            }, this);
+        _cleanedEvents: function(event) {
+            return _.omit(event, this.keysToIgnore);
         },
 
         /**
@@ -174,7 +169,7 @@
          * Get the configured endpoint URL, or the default if one is not configured
          */
         _getUrl: function() {
-            return clientMetricsUrl;
+            return this.beaconUrl;
         },
 
         _removeImageFromDom: function() {
@@ -189,7 +184,7 @@
 
         /**
          * the method that actually sends the GET request to the endpoint. It is done
-         * by adding an img to the DOM and its src being set to the created url.
+         * by adding an img to the DOM and its src being set to the created beaconUrl.
          */
         _makeGetRequest: function(data) {
             if (_.isArray(data)) {
@@ -199,8 +194,8 @@
             var encodedParameters = this._toQueryString(data);
 
             if (encodedParameters.length > 0) {
-                var clientMetricsUrl = this._getUrl();
-                var fullUrl = clientMetricsUrl + '?' + encodedParameters;
+                var beaconUrl = this._getUrl();
+                var fullUrl = beaconUrl + '?' + encodedParameters;
 
                 var imgConfig = {
                     tag: 'img',
@@ -221,12 +216,6 @@
                 document.body.appendChild(img);
                 img.src = fullUrl;
             }
-        }
-    });
-
-    _.extend(BatchSender, {
-        setClientMetricsUrl: function(url) {
-            clientMetricsUrl = url;
         }
     });
 

@@ -50,6 +50,14 @@
      *  * cmpId -- component ID
      *
      * @constructor
+     * @param {Object} config Configuration object
+     * @param {Object[]} [config.ajaxProviders] Ajax providers that emit the following events:
+     *   * beforerequest - When an Ajax request is about to be made
+     *   * requestcomplete - When an Ajax request has finished
+     * @param {Object} [config.sender = BatchSender] Which sender to use. By default,
+     *   a BatchSender will be used.
+     * @param {Number} [config.flushInterval] If defined, events will be sent at least that often.
+     * @param {String} [config.beaconUrl = "https://trust.rallydev.com/beacon/"] URL where the beacon is located.
      */
     var ClientMetricsAggregator = function(config) {
         _.extend(this, config);
@@ -77,7 +85,8 @@
         this.sender = this.sender || new BatchSender({
             keysToIgnore: [ 'cmp' ],
             minLength: MIN_EVENT_LENGTH,
-            maxLength: MAX_EVENT_LENGTH
+            maxLength: MAX_EVENT_LENGTH,
+            beaconUrl: config.beaconUrl
         });
 
         if (_.isNumber(this.flushInterval)) {

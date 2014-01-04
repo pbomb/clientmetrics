@@ -221,15 +221,15 @@
     });
     describe('startSession message', function() {
       return it("should start a new session", function() {
-        var aggregator, defaultParams, startNewSessionStub, status;
+        var aggregator, defaultParams, startSessionStub, status;
         aggregator = this.createAggregator();
-        startNewSessionStub = this.stub(aggregator, "startNewSession");
+        startSessionStub = this.stub(aggregator, "startSession");
         status = 'a status';
         defaultParams = {
           foo: 'bar'
         };
         this.startSession(aggregator, status, defaultParams);
-        return expect(startNewSessionStub).toHaveBeenCalledWith(status, defaultParams);
+        return expect(startSessionStub).toHaveBeenCalledWith(status, defaultParams);
       });
     });
     describe('data requests', function() {
@@ -440,7 +440,7 @@
         var aggregator;
         aggregator = this.createAggregator();
         aggregator._errorCount = 2;
-        aggregator.startNewSession("newsession");
+        aggregator.startSession("newsession");
         return expect(aggregator._errorCount).toBe(0);
       });
       return it("truncates long error info", function() {
@@ -476,7 +476,7 @@
         defaultParams = {
           hash: hash
         };
-        aggregator.startNewSession({
+        aggregator.startSession({
           status: "Session 1",
           defaultParams: defaultParams
         });
