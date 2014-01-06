@@ -6,7 +6,8 @@
           config = {};
         }
         return new RallyMetrics.BatchSender(_.defaults(config, {
-          beaconUrl: 'totallyfakeurl'
+          beaconUrl: 'totallyfakeurl',
+          minLength: 0
         }));
       },
       getData: function(count) {

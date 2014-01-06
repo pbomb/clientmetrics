@@ -1,7 +1,7 @@
 describe "RallyMetrics.BatchSender", ->
   helpers
     createSender: (config={}) ->
-      new RallyMetrics.BatchSender _.defaults(config, beaconUrl: 'totallyfakeurl')
+      new RallyMetrics.BatchSender _.defaults(config, beaconUrl: 'totallyfakeurl', minLength: 0)
       
     getData: (count) ->
       ({foo: i} for i in [0...count])

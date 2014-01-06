@@ -1,6 +1,14 @@
 (function() {
     var _ = require('underscore');
 
+    // the min and max length, in characters, that an encoded event can be. Max is set to 2000 since IE can
+    // only handle URLs of length ~2048
+    var MIN_EVENT_LENGTH = 1700;
+    var MAX_EVENT_LENGTH = 2000;
+
+    // how long an error's info can be, for error events
+    var MAX_ERROR_LENGTH = Math.floor(MAX_EVENT_LENGTH * 0.9);
+
     /**
      * @class Rally.clientmetrics.BatchSender
      * @private
@@ -20,8 +28,8 @@
     var BatchSender = function(config) {
         _.defaults(this, config, {
             keysToIgnore: [],
-            minLength: 0,
-            maxLength: 1000,
+            minLength: MIN_EVENT_LENGTH,
+            maxLength: MAX_EVENT_LENGTH,
             beaconUrl: "https://trust.rallydev.com/beacon/"
         });
         this._eventQueue = [];
@@ -47,6 +55,10 @@
 
         getPendingEvents: function() {
             return this._eventQueue;
+        },
+
+        getMaxLength: function() {
+            return this.maxLength;
         },
         
         _cleanedEvents: function(event) {

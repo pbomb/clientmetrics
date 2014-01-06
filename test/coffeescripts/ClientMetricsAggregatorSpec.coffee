@@ -87,6 +87,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       me = this
       send: (events) ->
         me.sentEvents = me.sentEvents.concat(events)
+      getMaxLength: -> 2000
 
     setupAggregator: ->
       aggregator = @createAggregator()

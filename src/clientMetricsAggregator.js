@@ -6,14 +6,6 @@
     // In ALM, a session is started for each page visit.
     var DEFAULT_ERROR_LIMIT = 25;
 
-    // the min and max length, in characters, that an encoded event can be. Max is set to 2000 since IE can
-    // only handle URLs of length ~2048
-    var MIN_EVENT_LENGTH = 1700;
-    var MAX_EVENT_LENGTH = 2000;
-
-    // how long an error's info can be, for error events
-    var MAX_ERROR_LENGTH = Math.floor(MAX_EVENT_LENGTH * 0.9);
-
     // bookkeeping properties that are set on components being measured
     var _currentEventId = '__clientMetricsCurrentEventId__';
     var _metricsIdProperty = '__clientMetricsID__';
@@ -84,10 +76,12 @@
 
         this.sender = this.sender || new BatchSender({
             keysToIgnore: [ 'cmp' ],
-            minLength: MIN_EVENT_LENGTH,
-            maxLength: MAX_EVENT_LENGTH,
             beaconUrl: config.beaconUrl
         });
+
+        if (_.isFunction(this.sender.getMaxLength)) {
+            this.maxErrorLength = Math.floor(this.sender.getMaxLength() * 0.9);
+        }
 
         if (_.isNumber(this.flushInterval)) {
             this._flushIntervalId = window.setInterval(_.bind(this.sendAllRemainingEvents, this), this.flushInterval);
@@ -154,11 +148,14 @@
             if (this._currentUserActionEventId && this._errorCount < this.errorLimit) {
                 ++this._errorCount;
 
-                errorInfo = errorInfo || 'unknown error';
+                var errorMsg = errorInfo || 'unknown error';
+                if (this.maxErrorLength) {
+                    errorMsg = errorMsg.substring(0, this.maxErrorLength);
+                }
 
                 var errorEvent = this._startEvent({
                     eType: 'error',
-                    error: errorInfo.substring(0, MAX_ERROR_LENGTH),
+                    error: errorMsg,
                     eId: this._getUniqueId(),
                     tId: this._currentUserActionEventId
                 });

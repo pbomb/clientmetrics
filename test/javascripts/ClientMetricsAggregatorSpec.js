@@ -170,6 +170,9 @@
         return {
           send: function(events) {
             return me.sentEvents = me.sentEvents.concat(events);
+          },
+          getMaxLength: function() {
+            return 2000;
           }
         };
       },
