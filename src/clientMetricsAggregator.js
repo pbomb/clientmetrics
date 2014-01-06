@@ -62,7 +62,6 @@
         }
 
         this._pendingEvents = [];
-        this._currentParentEvents = [];
         this._browserTabId = this._getUniqueId();
         this._startingTime = new Date().getTime();
 
@@ -103,11 +102,10 @@
          * @param status the event's status for each of the pending events
          * @param defaultParams Default parameters that are sent with each request
          */
-        startSession: function(options) {
-            this._concludePendingEvents(options.status);
+        startSession: function(status, defaultParams) {
+            this._concludePendingEvents(status);
             this.sendAllRemainingEvents();
-            this._currentParentEvents = [];
-            this._defaultParams = options.defaultParams;
+            this._defaultParams = defaultParams;
 
             this._errorCount = 0;
         },
@@ -121,7 +119,7 @@
             var cmp = options.component;
             delete options.component;
             var eventId = this._getUniqueId();
-            var startTime = options.startTime || new Date().getTime();
+            var startTime = this._convertToRelativeTime(options.startTime || new Date().getTime());
 
             var action = this._startEvent(_.defaults({
                 eType: 'action',
@@ -132,15 +130,15 @@
                 eId: eventId,
                 tId: eventId,
                 status: 'Ready',
-                cmpType: this._getFromHandlers(cmp, 'getComponentType')
+                cmpType: this._getFromHandlers(cmp, 'getComponentType'),
+                start: startTime
             }, options.miscData));
 
             this._currentUserActionEventId = action.eId;
 
-            // special case, action events are synchronous, they should have same start and stop
-            action.start = action.stop = this._convertToRelativeTime(startTime);
-
-            this._finishEvent(action);
+            this._finishEvent(action, {
+                stop: startTime
+            });
         },
 
         recordError: function(errorInfo) {
@@ -152,16 +150,19 @@
                     errorMsg = errorMsg.substring(0, this.maxErrorLength);
                 }
 
+                var startTime = this._getRelativeTime();
+
                 var errorEvent = this._startEvent({
                     eType: 'error',
                     error: errorMsg,
                     eId: this._getUniqueId(),
-                    tId: this._currentUserActionEventId
+                    tId: this._currentUserActionEventId,
+                    start: startTime
                 });
 
-                errorEvent.start = errorEvent.stop = this._getRelativeTime();
-
-                this._finishEvent(errorEvent);
+                this._finishEvent(errorEvent, {
+                    stop: startTime
+                });
 
                 // dont want errors to get left behind in the batch, force it to be sent now
                 this.sendAllRemainingEvents();
@@ -301,15 +302,17 @@
                     // just ignoring it.
                     return;
                 }
-                event.status = 'Ready';
-
+                
+                var newEventData = {
+                    status: 'Ready'
+                };
                 var rallyRequestId = this._getRallyRequestId(response);
 
                 if (rallyRequestId) {
-                    event.rallyRequestId = rallyRequestId;
+                    newEventData.rallyRequestId = rallyRequestId;
                 }
 
-                this._finishEvent(event);
+                this._finishEvent(event, newEventData);
             }
         },
 
@@ -346,10 +349,6 @@
             return timestamp - this._startingTime;
         },
 
-        _removeCurrentParentEvent: function(event) {
-            _.remove(this._currentParentEvents, {eId: event.eId});
-        },
-
         /**
          * Finishes an event object by completing necessary event properties
          * Adds this event object to the finished event queue
@@ -362,6 +361,7 @@
             var stop = this._getRelativeTime();
 
             var event = _.defaults(
+                {},
                 existingEvent,
                 newEventData,
                 {
@@ -371,8 +371,7 @@
                 this._guiTestParams
             );
 
-            this._pendingEvents = _.without(this._pendingEvents, event);
-            this._removeCurrentParentEvent(event);
+            this._pendingEvents = _.without(this._pendingEvents, existingEvent);
 
             this.sender.send([event]);
         },
@@ -399,9 +398,6 @@
             }
 
             this._pendingEvents.push(event);
-
-            // copying the event to stick into parent events so we know its properties will never change
-            this._currentParentEvents.push(_.clone(event));
 
             return event;
         },
@@ -431,7 +427,7 @@
             var eventId = traceId;
 
             _.each(hierarchy, function(cmp) {
-                parentEvent = _.findLast(this._currentParentEvents, function(event) {
+                parentEvent = _.findLast(this._pendingEvents, function(event) {
                     return event.eType !== 'dataRequest' && (event.cmp === cmp || event.cmp === sourceCmp) && event.tId === traceId;
                 });
                 if (parentEvent) {
@@ -562,10 +558,11 @@
          * @param status the event's status for each of the pending events
          */
         _concludePendingEvents: function(status) {
-            var pendingEvents = _.clone(this._pendingEvents),
-                now = this._getRelativeTime();
+            var pendingEvents = this._pendingEvents,
+                now = this._getRelativeTime(),
+                newEventData = {status: status, stop: now};
             _.each(pendingEvents, function(event) {
-                this._finishEvent(event, {status: status, stop: now});
+                this._finishEvent(event, newEventData);
             }, this);
         }
     });

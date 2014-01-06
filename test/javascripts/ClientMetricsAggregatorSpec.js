@@ -123,7 +123,7 @@
       },
       startSession: function(aggregator, status, defaultParams) {
         if (status == null) {
-          status = "a status";
+          status = "Navigation";
         }
         if (defaultParams == null) {
           defaultParams = {};
@@ -226,7 +226,7 @@
       it("should start a new session", function() {
         var aggregator, defaultParams, status;
         aggregator = this.createAggregator();
-        status = 'a status';
+        status = 'Navigation';
         defaultParams = {
           foo: 'bar'
         };
@@ -238,7 +238,23 @@
         this.startSession(aggregator);
         return expect(aggregator.sender.flush).toHaveBeenCalledOnce();
       });
-      it("should conclude pending events", function() {});
+      it("should conclude pending events", function() {
+        var aggregator, event, _i, _len, _ref, _results;
+        aggregator = this.createAggregatorAndRecordAction();
+        this.sentEvents = [];
+        this.beginLoad(aggregator);
+        this.beginLoad(aggregator);
+        expect(aggregator.sender.send).not.toHaveBeenCalled();
+        this.startSession(aggregator);
+        expect(this.sentEvents.length).toBe(2);
+        _ref = this.sentEvents;
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          event = _ref[_i];
+          _results.push(expect(event.status).toBe("Navigation"));
+        }
+        return _results;
+      });
       return it("should append defaultParams to events", function() {
         var actionEvent, aggregator, defaultParams, hash;
         aggregator = this.createAggregator();
@@ -246,10 +262,7 @@
         defaultParams = {
           hash: hash
         };
-        aggregator.startSession({
-          status: "Session 1",
-          defaultParams: defaultParams
-        });
+        aggregator.startSession("Session 1", defaultParams);
         this.recordAction(aggregator);
         actionEvent = this.findActionEvent();
         return expect(actionEvent.hash).toBe(hash);

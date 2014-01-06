@@ -38,7 +38,6 @@ class AjaxProvider
 
 describe "RallyMetrics.ClientMetricsAggregator", ->
   beforeEach ->
-    # @ajaxProvider = new Ext.data.Connection()
     @ajaxProvider = new AjaxProvider(this)
     @rallyRequestId = 123456
     @spy(@ajaxProvider, "request")
@@ -63,7 +62,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       aggregator.recordError(errorMessage)
       return errorMessage
 
-    startSession: (aggregator, status="a status", defaultParams = {}) ->
+    startSession: (aggregator, status="Navigation", defaultParams = {}) ->
       aggregator.startSession(status, defaultParams)
       return { status, defaultParams }
       
@@ -120,7 +119,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
     it "should start a new session", ->
       aggregator = @createAggregator()
 
-      status = 'a status'
+      status = 'Navigation'
       defaultParams = foo: 'bar'
       
       @startSession aggregator, status, defaultParams
@@ -133,6 +132,20 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       expect(aggregator.sender.flush).toHaveBeenCalledOnce()
 
     it "should conclude pending events", ->
+      aggregator = @createAggregatorAndRecordAction()
+
+      @sentEvents = []
+
+      @beginLoad aggregator
+      @beginLoad aggregator
+
+      expect(aggregator.sender.send).not.toHaveBeenCalled()
+
+      @startSession aggregator
+
+      expect(@sentEvents.length).toBe 2
+      for event in @sentEvents
+        expect(event.status).toBe "Navigation"
   
     it "should append defaultParams to events", ->
       aggregator = @createAggregator()
@@ -140,7 +153,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       hash = "/some/hash"
       defaultParams = hash: hash
       
-      aggregator.startSession { status: "Session 1", defaultParams }
+      aggregator.startSession "Session 1", defaultParams
       @recordAction(aggregator)
   
       actionEvent = @findActionEvent()
