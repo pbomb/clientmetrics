@@ -21,8 +21,8 @@
      * @constructor
      * @param {Object} config Configuration object
      * @param {String[]} [config.keysToIgnore = []] Which properties on events should not be sent
-     * @param {Number} [config.minLength = 0] The minimum length of the generated URL that can be sent.
-     * @param {Number} [config.maxLength = 0] The maximum length of the generated URL that can be sent.
+     * @param {Number} [config.minLength = 1700] The minimum length of the generated URL that can be sent.
+     * @param {Number} [config.maxLength = 2000] The maximum length of the generated URL that can be sent.
      * @param {String} [config.beaconUrl = "https://trust.rallydev.com/beacon/"] URL where the beacon is located.
      */
     var BatchSender = function(config) {

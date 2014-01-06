@@ -186,7 +186,7 @@
                 return;
             }
 
-            var startTime = options.startTime || new Date().getTime();
+            var startTime = this._convertToRelativeTime(options.startTime || new Date().getTime());
 
             var eventId = this._getUniqueId();
             cmp[_currentEventId + 'load'] = eventId;
@@ -201,7 +201,7 @@
                 cmpType: this._getFromHandlers(cmp, 'getComponentType'),
                 tId: this._currentUserActionEventId,
                 pId: this._findParentId(cmp, this._currentUserActionEventId),
-                start: this._convertToRelativeTime(startTime)
+                start: startTime
             }, options.miscData);
             this._startEvent(event);
         },
