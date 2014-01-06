@@ -61,7 +61,6 @@
             }, this);
         }
 
-        this._finishedEvents = [];
         this._pendingEvents = [];
         this._currentParentEvents = [];
         this._browserTabId = this._getUniqueId();
@@ -315,6 +314,14 @@
         },
 
         /**
+         * Causes the sender to purge all events it may still have in its queue.
+         * Typically done when the user navigates somewhere
+         */
+        sendAllRemainingEvents: function() {
+            this.sender.flush();
+        },
+
+        /**
          * Creates a version 4 UUID
          */
         _getUniqueId: function() {
@@ -366,11 +373,8 @@
 
             this._pendingEvents = _.without(this._pendingEvents, event);
             this._removeCurrentParentEvent(event);
-            this._finishedEvents.push(event);
 
-            // send a batch of finished events
-            this.sender.send(this._finishedEvents);
-            this._finishedEvents = [];
+            this.sender.send([event]);
         },
 
         /**
@@ -424,7 +428,7 @@
          */
         _findParentId: function(sourceCmp, traceId) {
             var hierarchy = this._getFromHandlers(sourceCmp, 'getComponentHierarchy') || [];
-            var eventId = null;
+            var eventId = traceId;
 
             _.each(hierarchy, function(cmp) {
                 parentEvent = _.findLast(this._currentParentEvents, function(event) {
@@ -436,7 +440,7 @@
                 }
             }, this);
 
-            return eventId || traceId;
+            return eventId;
         },
 
         /**
@@ -491,15 +495,6 @@
                 // new style message: received [options, eOpts]
                 return messageArgs[0];
             }
-        },
-
-        /**
-         * Causes the sender to purge all events it may still have in its queue.
-         * Typically done when the user navigates somewhere
-         */
-        sendAllRemainingEvents: function() {
-            this.sender.send(this._finishedEvents, { purge: true });
-            this._finishedEvents = [];
         },
 
         /**

@@ -73,4 +73,27 @@ describe "RallyMetrics.BatchSender", ->
   
       img = document.body.appendChild.args[0][0]
       expect(img.src).toBe "#{clientMetricsUrl}?foo.0=0&foo.1=1"
+
+  describe '#flush', ->
+
+    it "should send a batch even though the url length is shorter than the configured min length", ->
+      clientMetricsUrl = "http://localhost/testing"
+      
+      sender = @createSender
+        beaconUrl: clientMetricsUrl
+        minLength: 1000
+    
+      data = @getData(2)
+
+      sender.send data
+      expect(sender.getPendingEvents()).toEqual data
+      expect(document.body.appendChild).not.toHaveBeenCalled()
+
+      sender.flush()
+
+      expect(sender.getPendingEvents().length).toBe 0
+      expect(document.body.appendChild).toHaveBeenCalledOnce()
+      img = document.body.appendChild.args[0][0]
+      expect(img.src).toBe "#{clientMetricsUrl}?foo.0=0&foo.1=1"
+
       

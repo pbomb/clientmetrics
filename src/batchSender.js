@@ -37,19 +37,19 @@
 
     _.extend(BatchSender.prototype, {
 
-        send: function(events, options) {
+        send: function(events) {
             var cleanedEvents = _.map(events, this._cleanedEvents, this);
 
             this._eventQueue = this._eventQueue.concat(cleanedEvents);
 
-            if (options && options.purge) {
-                while (this._eventQueue.length > 0) {
-                    this._sendBatch();
-                }
-            } else {
-                while (this._canSendBatch()) {
-                    this._sendBatch();
-                }
+            while (this._canSendBatch()) {
+                this._sendBatch();
+            }
+        },
+
+        flush: function() {
+            while (this._eventQueue.length > 0) {
+                this._sendBatch();
             }
         },
 

@@ -46,7 +46,7 @@
         });
       });
     });
-    return describe('#send', function() {
+    describe('#send', function() {
       it("should append indices to the keys so they don't get clobbered", function() {
         var d, data, i, img, _i, _len, _results;
         data = this.getData(10);
@@ -96,6 +96,25 @@
         });
         data = this.getData(2);
         sender.send(data);
+        img = document.body.appendChild.args[0][0];
+        return expect(img.src).toBe("" + clientMetricsUrl + "?foo.0=0&foo.1=1");
+      });
+    });
+    return describe('#flush', function() {
+      return it("should send a batch even though the url length is shorter than the configured min length", function() {
+        var clientMetricsUrl, data, img, sender;
+        clientMetricsUrl = "http://localhost/testing";
+        sender = this.createSender({
+          beaconUrl: clientMetricsUrl,
+          minLength: 1000
+        });
+        data = this.getData(2);
+        sender.send(data);
+        expect(sender.getPendingEvents()).toEqual(data);
+        expect(document.body.appendChild).not.toHaveBeenCalled();
+        sender.flush();
+        expect(sender.getPendingEvents().length).toBe(0);
+        expect(document.body.appendChild).toHaveBeenCalledOnce();
         img = document.body.appendChild.args[0][0];
         return expect(img.src).toBe("" + clientMetricsUrl + "?foo.0=0&foo.1=1");
       });

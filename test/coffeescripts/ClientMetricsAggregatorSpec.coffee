@@ -84,12 +84,13 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
 
     createSender: ->
       @sentEvents = []
-      me = this
-      send: (events) ->
-        me.sentEvents = me.sentEvents.concat(events)
-      getMaxLength: -> 2000
 
-    setupAggregator: ->
+      send: (events) =>
+        @sentEvents = @sentEvents.concat(events)
+      getMaxLength: -> 2000
+      flush: @stub()
+
+    createAggregatorAndRecordAction: ->
       aggregator = @createAggregator()
       @recordAction(aggregator)
       aggregator
@@ -103,33 +104,59 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       @aggregator?.destroy()
       
     it 'should flush on the specified interval', ->
-      sendEventsSpy = @spy(RallyMetrics.ClientMetricsAggregator::, 'sendAllRemainingEvents')
-      
-      start = new Date().getTime()
       @aggregator = @createAggregator
         flushInterval: 10
 
+      start = new Date().getTime()
+
       once(
-        condition: -> sendEventsSpy.callCount > 2
+        condition: => @aggregator.sender.flush.callCount > 2
         description: 'waiting for flush to happen more than twice'
       ).then ->
         stop = new Date().getTime()
         expect(stop - start).toBeGreaterThan 20
       
-  describe 'startSession message', ->
+  describe '#startSession', ->
     it "should start a new session", ->
       aggregator = @createAggregator()
-      startSessionStub = @stub(aggregator, "startSession")
 
       status = 'a status'
       defaultParams = foo: 'bar'
       
       @startSession aggregator, status, defaultParams
-      expect(startSessionStub).toHaveBeenCalledWith status, defaultParams
+
+    it "should flush the sender", ->
+      aggregator = @createAggregator()
+
+      @startSession aggregator
+      
+      expect(aggregator.sender.flush).toHaveBeenCalledOnce()
+
+    it "should conclude pending events", ->
+  
+    it "should append defaultParams to events", ->
+      aggregator = @createAggregator()
+
+      hash = "/some/hash"
+      defaultParams = hash: hash
+      
+      aggregator.startSession { status: "Session 1", defaultParams }
+      @recordAction(aggregator)
+  
+      actionEvent = @findActionEvent()
+      expect(actionEvent.hash).toBe hash
+
+  describe '#sendAllRemainingEvents', ->
+    it 'should flush the sender', ->
+      aggregator = @createAggregator()
+
+      aggregator.sendAllRemainingEvents()
+
+      expect(aggregator.sender.flush).toHaveBeenCalledOnce()
 
   describe 'data requests', ->
     it "should trim the request url correctly", ->
-      @setupAggregator()
+      @createAggregatorAndRecordAction()
       
       expectedUrl = "3.14/Foo.js"
       entireUrl = "http://localhost/testing/webservice/#{expectedUrl}?bar=baz&boo=buzz"
@@ -142,7 +169,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       expect(dataEvent.url).toEqual expectedUrl
     
     it "should have the component hierarchy", ->
-      @setupAggregator()
+      @createAggregatorAndRecordAction()
       @ajaxProvider.request
         requester: new Panel()
       
@@ -150,7 +177,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       expect(dataEvent.cmpH).toEqual "Panel"
       
     it "appends ID properties to AJAX headers", ->
-      @setupAggregator()
+      @createAggregatorAndRecordAction()
       @ajaxProvider.request
         requester: this
 
@@ -161,14 +188,14 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       expect(@connection.defaultHeaders['X-Trace-Id']).toEqual actionEvent.eId
   
     it "does not append ID properties to AJAX headers when request is not instrumented", ->
-      @setupAggregator()
+      @createAggregatorAndRecordAction()
       @ajaxProvider.request {}
   
       expect(@connection.defaultHeaders['X-Parent-Id']).toBeUndefined()
       expect(@connection.defaultHeaders['X-Trace-Id']).toBeUndefined()
       
     it "appends the rallyRequestId onto dataRequest events", ->
-      @setupAggregator()
+      @createAggregatorAndRecordAction()
       @ajaxProvider.request
         requester: this
 
@@ -290,7 +317,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
 
   describe 'miscData', ->
     it "should append miscData to an event and not overwrite known properties", ->
-      aggregator = @setupAggregator()
+      aggregator = @createAggregatorAndRecordAction()
   
       miscData =
         eId: "this shouldnt clobeber the real eId"
@@ -305,9 +332,8 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       expect(loadEvent.eId).not.toEqual miscData.eId
       expect(loadEvent.foo).toEqual miscData.foo
 
-
-  describe 'error', ->
-    it "creates an error event for error messages", ->
+  describe '#recordError', ->
+    it "sends an error event", ->
       aggregator = @createAggregator()
 
       @recordAction(aggregator)
@@ -361,20 +387,8 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       
       actionEvent = @findActionEvent()
       expect(actionEvent.foo).toEqual "bar"
-  
-    it "should append defaultParams to events", ->
-      aggregator = @createAggregator()
 
-      hash = "/some/hash"
-      defaultParams = hash: hash
-      
-      aggregator.startSession { status: "Session 1", defaultParams }
-      @recordAction(aggregator)
-  
-      actionEvent = @findActionEvent()
-      expect(actionEvent.hash).toEqual hash
-
-  describe "legacy messages", ->
+  describe "legacy API", ->
     helpers
       recordActionWithCmpOptions: (aggregator, cmp, description="an action") ->
         aggregator.recordAction cmp,
@@ -403,7 +417,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
 
         return cmp
 
-    describe "messages that have component and options params", ->    
+    describe "calls that pass component and options params", ->    
       beforeEach ->
         panel = new Panel()
         aggregator = @createAggregator()
@@ -428,7 +442,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
           expect(@loadEvent.pId).toBeAString()
           expect(@loadEvent.pId).toEqual @actionEvent.eId
 
-    describe "messages that have component, description and miscData params", ->    
+    describe "calls that pass component, description and miscData params", ->    
       beforeEach ->
         panel = new Panel()
         aggregator = @createAggregator()

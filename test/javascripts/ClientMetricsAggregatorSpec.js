@@ -164,19 +164,19 @@
         return new RallyMetrics.ClientMetricsAggregator(aggregatorConfig);
       },
       createSender: function() {
-        var me;
+        var _this = this;
         this.sentEvents = [];
-        me = this;
         return {
           send: function(events) {
-            return me.sentEvents = me.sentEvents.concat(events);
+            return _this.sentEvents = _this.sentEvents.concat(events);
           },
           getMaxLength: function() {
             return 2000;
-          }
+          },
+          flush: this.stub()
         };
       },
-      setupAggregator: function() {
+      createAggregatorAndRecordAction: function() {
         var aggregator;
         aggregator = this.createAggregator();
         this.recordAction(aggregator);
@@ -204,15 +204,15 @@
         return (_ref = this.aggregator) != null ? _ref.destroy() : void 0;
       });
       return it('should flush on the specified interval', function() {
-        var sendEventsSpy, start;
-        sendEventsSpy = this.spy(RallyMetrics.ClientMetricsAggregator.prototype, 'sendAllRemainingEvents');
-        start = new Date().getTime();
+        var start,
+          _this = this;
         this.aggregator = this.createAggregator({
           flushInterval: 10
         });
+        start = new Date().getTime();
         return once({
           condition: function() {
-            return sendEventsSpy.callCount > 2;
+            return _this.aggregator.sender.flush.callCount > 2;
           },
           description: 'waiting for flush to happen more than twice'
         }).then(function() {
@@ -222,23 +222,51 @@
         });
       });
     });
-    describe('startSession message', function() {
-      return it("should start a new session", function() {
-        var aggregator, defaultParams, startSessionStub, status;
+    describe('#startSession', function() {
+      it("should start a new session", function() {
+        var aggregator, defaultParams, status;
         aggregator = this.createAggregator();
-        startSessionStub = this.stub(aggregator, "startSession");
         status = 'a status';
         defaultParams = {
           foo: 'bar'
         };
-        this.startSession(aggregator, status, defaultParams);
-        return expect(startSessionStub).toHaveBeenCalledWith(status, defaultParams);
+        return this.startSession(aggregator, status, defaultParams);
+      });
+      it("should flush the sender", function() {
+        var aggregator;
+        aggregator = this.createAggregator();
+        this.startSession(aggregator);
+        return expect(aggregator.sender.flush).toHaveBeenCalledOnce();
+      });
+      it("should conclude pending events", function() {});
+      return it("should append defaultParams to events", function() {
+        var actionEvent, aggregator, defaultParams, hash;
+        aggregator = this.createAggregator();
+        hash = "/some/hash";
+        defaultParams = {
+          hash: hash
+        };
+        aggregator.startSession({
+          status: "Session 1",
+          defaultParams: defaultParams
+        });
+        this.recordAction(aggregator);
+        actionEvent = this.findActionEvent();
+        return expect(actionEvent.hash).toBe(hash);
+      });
+    });
+    describe('#sendAllRemainingEvents', function() {
+      return it('should flush the sender', function() {
+        var aggregator;
+        aggregator = this.createAggregator();
+        aggregator.sendAllRemainingEvents();
+        return expect(aggregator.sender.flush).toHaveBeenCalledOnce();
       });
     });
     describe('data requests', function() {
       it("should trim the request url correctly", function() {
         var dataEvent, entireUrl, expectedUrl;
-        this.setupAggregator();
+        this.createAggregatorAndRecordAction();
         expectedUrl = "3.14/Foo.js";
         entireUrl = "http://localhost/testing/webservice/" + expectedUrl + "?bar=baz&boo=buzz";
         this.ajaxProvider.request({
@@ -250,7 +278,7 @@
       });
       it("should have the component hierarchy", function() {
         var dataEvent;
-        this.setupAggregator();
+        this.createAggregatorAndRecordAction();
         this.ajaxProvider.request({
           requester: new Panel()
         });
@@ -259,7 +287,7 @@
       });
       it("appends ID properties to AJAX headers", function() {
         var actionEvent, dataEvent;
-        this.setupAggregator();
+        this.createAggregatorAndRecordAction();
         this.ajaxProvider.request({
           requester: this
         });
@@ -269,14 +297,14 @@
         return expect(this.connection.defaultHeaders['X-Trace-Id']).toEqual(actionEvent.eId);
       });
       it("does not append ID properties to AJAX headers when request is not instrumented", function() {
-        this.setupAggregator();
+        this.createAggregatorAndRecordAction();
         this.ajaxProvider.request({});
         expect(this.connection.defaultHeaders['X-Parent-Id']).toBeUndefined();
         return expect(this.connection.defaultHeaders['X-Trace-Id']).toBeUndefined();
       });
       return it("appends the rallyRequestId onto dataRequest events", function() {
         var dataEvent;
-        this.setupAggregator();
+        this.createAggregatorAndRecordAction();
         this.ajaxProvider.request({
           requester: this
         });
@@ -396,7 +424,7 @@
     describe('miscData', function() {
       return it("should append miscData to an event and not overwrite known properties", function() {
         var aggregator, cmp, loadEvent, miscData;
-        aggregator = this.setupAggregator();
+        aggregator = this.createAggregatorAndRecordAction();
         miscData = {
           eId: "this shouldnt clobeber the real eId",
           foo: "this should get through"
@@ -409,8 +437,8 @@
         return expect(loadEvent.foo).toEqual(miscData.foo);
       });
     });
-    describe('error', function() {
-      it("creates an error event for error messages", function() {
+    describe('#recordError', function() {
+      it("sends an error event", function() {
         var aggregator, errorEvent, errorMessage;
         aggregator = this.createAggregator();
         this.recordAction(aggregator);
@@ -462,7 +490,7 @@
       });
     });
     describe('additional parameters', function() {
-      it("should append guiTestParams to events", function() {
+      return it("should append guiTestParams to events", function() {
         var actionEvent, aggregator;
         aggregator = this.createAggregator();
         aggregator._guiTestParams = {
@@ -472,23 +500,8 @@
         actionEvent = this.findActionEvent();
         return expect(actionEvent.foo).toEqual("bar");
       });
-      return it("should append defaultParams to events", function() {
-        var actionEvent, aggregator, defaultParams, hash;
-        aggregator = this.createAggregator();
-        hash = "/some/hash";
-        defaultParams = {
-          hash: hash
-        };
-        aggregator.startSession({
-          status: "Session 1",
-          defaultParams: defaultParams
-        });
-        this.recordAction(aggregator);
-        actionEvent = this.findActionEvent();
-        return expect(actionEvent.hash).toEqual(hash);
-      });
     });
-    return describe("legacy messages", function() {
+    return describe("legacy API", function() {
       helpers({
         recordActionWithCmpOptions: function(aggregator, cmp, description) {
           if (description == null) {
@@ -537,7 +550,7 @@
           return cmp;
         }
       });
-      describe("messages that have component and options params", function() {
+      describe("calls that pass component and options params", function() {
         beforeEach(function() {
           var aggregator, panel;
           panel = new Panel();
@@ -563,7 +576,7 @@
           });
         });
       });
-      return describe("messages that have component, description and miscData params", function() {
+      return describe("calls that pass component, description and miscData params", function() {
         beforeEach(function() {
           var aggregator, panel;
           panel = new Panel();
