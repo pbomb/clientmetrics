@@ -1,7 +1,10 @@
 describe "RallyMetrics.BatchSender", ->
+
+  fakeBeaconUrl = 'totallyfakeurl'
+
   helpers
     createSender: (config={}) ->
-      new RallyMetrics.BatchSender _.defaults(config, beaconUrl: 'totallyfakeurl', minLength: 0)
+      new RallyMetrics.BatchSender _.defaults(config, beaconUrl: fakeBeaconUrl, minLength: 0)
       
     getData: (count) ->
       ({foo: i} for i in [0...count])
@@ -21,7 +24,7 @@ describe "RallyMetrics.BatchSender", ->
         data[aKeyToIgnore] = "should ignore this one"
         data[anotherKeyToIgnore] = "this one too"
   
-        sender.send [data]
+        sender.send data
   
         img = document.body.appendChild.args[0][0]
         expect(img.src).toContain "foo.0=bar"
@@ -31,7 +34,9 @@ describe "RallyMetrics.BatchSender", ->
   describe '#send', ->
     it "should append indices to the keys so they don't get clobbered", ->
       data = @getData(10)
-      @createSender().send data
+      sender = @createSender(minLength: 10 * 8 + fakeBeaconUrl.length)
+
+      sender.send datum for datum in data
 
       img = document.body.appendChild.args[0][0]
       for d, i in data
@@ -43,7 +48,7 @@ describe "RallyMetrics.BatchSender", ->
   
       data = @getData(2)
 
-      sender.send data
+      sender.send datum for datum in data
       expect(sender.getPendingEvents()).toEqual data
       expect(document.body.appendChild).not.toHaveBeenCalled()
   
@@ -56,20 +61,20 @@ describe "RallyMetrics.BatchSender", ->
       for i in [0..101]
         longValue += 'a'
 
-      data = [foo: longValue]
+      data = foo: longValue
 
       sender.send data
 
-      expect(sender.getPendingEvents()).toEqual data
+      expect(sender.getPendingEvents()).toEqual [data]
       expect(document.body.appendChild).not.toHaveBeenCalled()
       
     it "should send to the configured url", ->
       clientMetricsUrl = "http://localhost/testing"
       
-      sender = @createSender(beaconUrl: clientMetricsUrl)
+      sender = @createSender(beaconUrl: clientMetricsUrl, minLength: 2 * 8 + clientMetricsUrl.length)
       data = @getData(2)
 
-      sender.send data
+      sender.send datum for datum in data
   
       img = document.body.appendChild.args[0][0]
       expect(img.src).toBe "#{clientMetricsUrl}?foo.0=0&foo.1=1"
@@ -85,7 +90,7 @@ describe "RallyMetrics.BatchSender", ->
     
       data = @getData(2)
 
-      sender.send data
+      sender.send datum for datum in data
       expect(sender.getPendingEvents()).toEqual data
       expect(document.body.appendChild).not.toHaveBeenCalled()
 

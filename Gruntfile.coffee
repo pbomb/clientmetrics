@@ -37,7 +37,7 @@ module.exports = (grunt) ->
   grunt.registerTask 'doc:check', 'Generates the AppSDK Docs and opens the browser to view them', ['doc', 'express:docs', 'open:docs', 'express-keepalive']
   grunt.registerTask 'doc:check:fast', 'Generates the AppSDK Docs without rebuilding everything and opens the browser to view them', ['jsduck', 'shell:ruidoc', 'copy:jsduck', 'example', 'express:docs', 'open:docs', 'express-keepalive']
 
-  grunt.registerTask 'nexus:deploy', 'Cleans and builds the SDK and deploys to nexus', ['clean:build', 'doc', 'version', 'nexus:client:publish']
+  grunt.registerTask 'nexus:deploy', 'Cleans and builds the SDK and deploys to nexus', ['clean:build', 'build', 'nexus:client:publish']
   grunt.registerTask 'fetch', 'Fetches the dependencies from Nexus', ['nexus:client:fetch']
 
   grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'webdriver_jasmine_runner:appsdk']
@@ -234,73 +234,13 @@ module.exports = (grunt) ->
         options:
           fetch: grunt.file.readJSON('js_dependencies.json')
           publish: [
-            { id: 'com.rallydev.js:clientmetrics:tgz', version: '<%= version %>', path: 'target/' }
+            { id: 'com.rallydev.js:rallymetrics:tgz', version: '<%= version %>', path: 'target/' }
           ]
 
     shell:
       options:
         stdout: true
         stderr: true
-
-      # dependencies:
-      #   command: [
-      #     "./lib/sencha-cmd/#{if process.platform is 'darwin' then 'mac' else 'linux'}/sencha"
-      #     "build"
-      #     "-p #{sdkBuildPath}/dependencies.jsb3"
-      #     "-d #{buildDir}"
-      #   ].join(' ')
-
-      # sdk:
-      #   command: [
-      #     "./lib/sencha-cmd/#{if process.platform is 'darwin' then 'mac' else 'linux'}/sencha"
-      #     if debug then '-d' else ''
-      #     '-s lib/ext/4.1.1a'
-      #     'compile'
-      #     "-classpath=#{buildDir}/sdk-dependencies-debug.js,src"
-      #     'exclude -all and'
-      #     'include -file src and'
-      #     'exclude -namespace Rally.sdk and'
-      #     'concat ' + buildDir + '/rui-debug.js and'
-      #     'concat -compress ' + sdkTargetPath + '/rui.js and'
-      #     'exclude -all and'
-      #     'include -file lib/ext/4.1.1a and'
-      #     "include -file #{sdkTargetPath}/sdk-dependencies-debug.js and"
-      #     'include -file src and'
-      #     '-debug=false concat ' + sdkTargetPath + '/sdk-debug.js and'
-      #     '-debug=false concat -compress ' + sdkTargetPath + '/sdk.js'
-      #   ].join(' ')
-
-      # ruidoc:
-      #   command: [
-      #     "./lib/sencha-cmd/#{if process.platform is 'darwin' then 'mac' else 'linux'}/sencha"
-      #     '-s lib/ext/4.1.1a'
-      #     'compile'
-      #     '-classpath=src,doc/src,test/javascripts/support/mock/data,test/support/data exclude -all and'
-      #     'include -file doc/src and'
-      #     'include -file test/javascripts/support/mock/data and'
-      #     'include -file test/support/data and'
-      #     'concat -compress builds/doc/rui-doc.js'
-      #   ].join(' ')
-
-      # jsduck:
-      #  command: 'rake doc'
-    jsduck:
-      main:
-        src: [
-          'src'
-        ]
-        dest: 'builds/doc'
-        options:
-          title: 'Rally Client Metrics <%= version %> Docs'
-          headHtml: '<link rel="stylesheet" href="style.css" type="text/css"><script type="text/javascript" src="JSDuckOverrides.js"></script>'
-          categories: 'doc/sdk-categories.json'
-          welcome: 'doc/sdk-welcome.html'
-          guides: 'doc/sdk-guides.json'
-          egIframe: 'doc/sdk-examples_iframe.html'
-          ignoreGlobal: true
-          examples: 'doc/sdk-examples.json'
-          examplesBaseUrl: 'examples'
-          warnings: if debug then '' else '-all'
 
     "regex-check":
       consolelogs:

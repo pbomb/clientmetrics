@@ -1,12 +1,14 @@
 (function() {
   describe("RallyMetrics.BatchSender", function() {
+    var fakeBeaconUrl;
+    fakeBeaconUrl = 'totallyfakeurl';
     helpers({
       createSender: function(config) {
         if (config == null) {
           config = {};
         }
         return new RallyMetrics.BatchSender(_.defaults(config, {
-          beaconUrl: 'totallyfakeurl',
+          beaconUrl: fakeBeaconUrl,
           minLength: 0
         }));
       },
@@ -38,7 +40,7 @@
           };
           data[aKeyToIgnore] = "should ignore this one";
           data[anotherKeyToIgnore] = "this one too";
-          sender.send([data]);
+          sender.send(data);
           img = document.body.appendChild.args[0][0];
           expect(img.src).toContain("foo.0=bar");
           expect(img.src).not.toContain("" + aKeyToIgnore + ".0");
@@ -48,24 +50,33 @@
     });
     describe('#send', function() {
       it("should append indices to the keys so they don't get clobbered", function() {
-        var d, data, i, img, _i, _len, _results;
+        var d, data, datum, i, img, sender, _i, _j, _len, _len1, _results;
         data = this.getData(10);
-        this.createSender().send(data);
+        sender = this.createSender({
+          minLength: 10 * 8 + fakeBeaconUrl.length
+        });
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          datum = data[_i];
+          sender.send(datum);
+        }
         img = document.body.appendChild.args[0][0];
         _results = [];
-        for (i = _i = 0, _len = data.length; _i < _len; i = ++_i) {
+        for (i = _j = 0, _len1 = data.length; _j < _len1; i = ++_j) {
           d = data[i];
           _results.push(expect(img.src).toContain("foo." + i + "=" + i));
         }
         return _results;
       });
       it("should not send a batch if the url length is shorter than the configured min length", function() {
-        var data, sender;
+        var data, datum, sender, _i, _len;
         sender = this.createSender({
           minLength: 1000
         });
         data = this.getData(2);
-        sender.send(data);
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          datum = data[_i];
+          sender.send(datum);
+        }
         expect(sender.getPendingEvents()).toEqual(data);
         return expect(document.body.appendChild).not.toHaveBeenCalled();
       });
@@ -79,37 +90,42 @@
         for (i = _i = 0; _i <= 101; i = ++_i) {
           longValue += 'a';
         }
-        data = [
-          {
-            foo: longValue
-          }
-        ];
+        data = {
+          foo: longValue
+        };
         sender.send(data);
-        expect(sender.getPendingEvents()).toEqual(data);
+        expect(sender.getPendingEvents()).toEqual([data]);
         return expect(document.body.appendChild).not.toHaveBeenCalled();
       });
       return it("should send to the configured url", function() {
-        var clientMetricsUrl, data, img, sender;
+        var clientMetricsUrl, data, datum, img, sender, _i, _len;
         clientMetricsUrl = "http://localhost/testing";
         sender = this.createSender({
-          beaconUrl: clientMetricsUrl
+          beaconUrl: clientMetricsUrl,
+          minLength: 2 * 8 + clientMetricsUrl.length
         });
         data = this.getData(2);
-        sender.send(data);
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          datum = data[_i];
+          sender.send(datum);
+        }
         img = document.body.appendChild.args[0][0];
         return expect(img.src).toBe("" + clientMetricsUrl + "?foo.0=0&foo.1=1");
       });
     });
     return describe('#flush', function() {
       return it("should send a batch even though the url length is shorter than the configured min length", function() {
-        var clientMetricsUrl, data, img, sender;
+        var clientMetricsUrl, data, datum, img, sender, _i, _len;
         clientMetricsUrl = "http://localhost/testing";
         sender = this.createSender({
           beaconUrl: clientMetricsUrl,
           minLength: 1000
         });
         data = this.getData(2);
-        sender.send(data);
+        for (_i = 0, _len = data.length; _i < _len; _i++) {
+          datum = data[_i];
+          sender.send(datum);
+        }
         expect(sender.getPendingEvents()).toEqual(data);
         expect(document.body.appendChild).not.toHaveBeenCalled();
         sender.flush();

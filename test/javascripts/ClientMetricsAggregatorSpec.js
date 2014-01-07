@@ -1,5 +1,5 @@
 (function() {
-  var AjaxProvider, Panel;
+  var Panel;
 
   Panel = (function() {
     function Panel(parent) {
@@ -30,49 +30,9 @@
 
   })();
 
-  AjaxProvider = (function() {
-    function AjaxProvider(spec) {
-      this.spec = spec;
-      this.events = {};
-    }
-
-    AjaxProvider.prototype.request = function(options) {
-      var response;
-      this.spec.connection = this;
-      _.extend(this, options);
-      this.fireEvent("beforerequest", this, options);
-      response = {
-        getResponseHeader: {
-          RallyRequestID: this.spec.rallyRequestId
-        }
-      };
-      return this.fireEvent("requestcomplete", this, response, options);
-    };
-
-    AjaxProvider.prototype.on = function(event, fn, scope) {
-      return this.events[event] = {
-        fn: fn,
-        scope: scope
-      };
-    };
-
-    AjaxProvider.prototype.fireEvent = function(event) {
-      var ev;
-      ev = this.events[event];
-      if (ev) {
-        return ev.fn.apply(ev.scope || this, _.toArray(arguments).slice(1));
-      }
-    };
-
-    return AjaxProvider;
-
-  })();
-
   describe("RallyMetrics.ClientMetricsAggregator", function() {
     beforeEach(function() {
-      this.ajaxProvider = new AjaxProvider(this);
-      this.rallyRequestId = 123456;
-      return this.spy(this.ajaxProvider, "request");
+      return this.rallyRequestId = 123456;
     });
     helpers({
       recordAction: function(aggregator, cmp, description) {
@@ -158,8 +118,7 @@
         };
         aggregatorConfig = _.defaults(config, {
           sender: this.createSender(),
-          handlers: [handler],
-          ajaxProviders: [this.ajaxProvider]
+          handlers: [handler]
         });
         return new RallyMetrics.ClientMetricsAggregator(aggregatorConfig);
       },
@@ -277,50 +236,71 @@
       });
     });
     describe('data requests', function() {
+      beforeEach(function() {
+        var _this = this;
+        this.xhrFake = sinon.useFakeXMLHttpRequest();
+        this.requests = [];
+        return this.xhrFake.onCreate = function(xhr) {
+          return _this.requests.push(xhr);
+        };
+      });
+      afterEach(function() {
+        return this.xhrFake.restore();
+      });
       it("should trim the request url correctly", function() {
-        var dataEvent, entireUrl, expectedUrl;
-        this.createAggregatorAndRecordAction();
+        var aggregator, dataEvent, entireUrl, expectedUrl, metricsData;
+        aggregator = this.createAggregatorAndRecordAction();
         expectedUrl = "3.14/Foo.js";
         entireUrl = "http://localhost/testing/webservice/" + expectedUrl + "?bar=baz&boo=buzz";
-        this.ajaxProvider.request({
-          requester: this,
-          url: entireUrl
-        });
+        metricsData = aggregator.beginDataRequest(this, entireUrl);
+        aggregator.endDataRequest(this, this.xhrFake, metricsData.requestId);
         dataEvent = this.findDataEvent();
         return expect(dataEvent.url).toEqual(expectedUrl);
       });
       it("should have the component hierarchy", function() {
-        var dataEvent;
-        this.createAggregatorAndRecordAction();
-        this.ajaxProvider.request({
-          requester: new Panel()
-        });
+        var aggregator, dataEvent, metricsData, requester;
+        aggregator = this.createAggregatorAndRecordAction();
+        requester = new Panel();
+        metricsData = aggregator.beginDataRequest(requester, "someUrl");
+        aggregator.endDataRequest(requester, this.xhrFake, metricsData.requestId);
         dataEvent = this.findDataEvent();
         return expect(dataEvent.cmpH).toEqual("Panel");
       });
-      it("appends ID properties to AJAX headers", function() {
-        var actionEvent, dataEvent;
-        this.createAggregatorAndRecordAction();
-        this.ajaxProvider.request({
-          requester: this
-        });
+      it("returns ID properties for AJAX headers", function() {
+        var actionEvent, aggregator, dataEvent, metricsData, requester;
+        aggregator = this.createAggregatorAndRecordAction();
+        requester = this;
+        metricsData = aggregator.beginDataRequest(requester, "someUrl");
+        aggregator.endDataRequest(requester, this.xhrFake, metricsData.requestId);
         actionEvent = this.findActionEvent();
         dataEvent = this.findDataEvent();
-        expect(this.connection.defaultHeaders['X-Parent-Id']).toEqual(dataEvent.eId);
-        return expect(this.connection.defaultHeaders['X-Trace-Id']).toEqual(actionEvent.eId);
+        return expect(metricsData.xhrHeaders).toEqual({
+          'X-Parent-Id': dataEvent.eId,
+          'X-Trace-Id': actionEvent.eId
+        });
       });
-      it("does not append ID properties to AJAX headers when request is not instrumented", function() {
-        this.createAggregatorAndRecordAction();
-        this.ajaxProvider.request({});
-        expect(this.connection.defaultHeaders['X-Parent-Id']).toBeUndefined();
-        return expect(this.connection.defaultHeaders['X-Trace-Id']).toBeUndefined();
+      it("does not return ID properties for AJAX headers when request is not instrumented", function() {
+        var aggregator, metricsData;
+        aggregator = this.createAggregatorAndRecordAction();
+        metricsData = aggregator.beginDataRequest(null, "someUrl");
+        return expect(metricsData).toBeUndefined();
       });
       return it("appends the rallyRequestId onto dataRequest events", function() {
-        var dataEvent;
-        this.createAggregatorAndRecordAction();
-        this.ajaxProvider.request({
-          requester: this
-        });
+        var aggregator, dataEvent, metricsData, request, xhr,
+          _this = this;
+        aggregator = this.createAggregatorAndRecordAction();
+        request = null;
+        this.xhrFake.onCreate = function(xhr) {
+          request = xhr;
+          return xhr.setResponseHeaders({
+            rallyrequestid: _this.rallyRequestId
+          });
+        };
+        xhr = new XMLHttpRequest();
+        xhr.open("GET", "/123");
+        xhr.send();
+        metricsData = aggregator.beginDataRequest(this, "someUrl");
+        aggregator.endDataRequest(this, request, metricsData.requestId);
         dataEvent = this.findDataEvent();
         return expect(dataEvent.rallyRequestId).toEqual(this.rallyRequestId);
       });
@@ -502,7 +482,7 @@
         return expect(errorEvent.error.length).toBeLessThan(2000);
       });
     });
-    describe('additional parameters', function() {
+    return describe('additional parameters', function() {
       return it("should append guiTestParams to events", function() {
         var actionEvent, aggregator;
         aggregator = this.createAggregator();
@@ -512,108 +492,6 @@
         this.recordAction(aggregator);
         actionEvent = this.findActionEvent();
         return expect(actionEvent.foo).toEqual("bar");
-      });
-    });
-    return describe("legacy API", function() {
-      helpers({
-        recordActionWithCmpOptions: function(aggregator, cmp, description) {
-          if (description == null) {
-            description = "an action";
-          }
-          aggregator.recordAction(cmp, {
-            description: description
-          });
-          return cmp;
-        },
-        beginLoadWithCmpOptions: function(aggregator, cmp, description, miscData) {
-          if (description == null) {
-            description = 'an action';
-          }
-          if (miscData == null) {
-            miscData = {};
-          }
-          aggregator.beginLoad(cmp, {
-            description: description,
-            miscData: miscData
-          });
-          return cmp;
-        },
-        recordActionWithCmpUserActionMiscData: function(aggregator, cmp, description, miscData) {
-          if (description == null) {
-            description = "an action";
-          }
-          if (miscData == null) {
-            miscData = {};
-          }
-          aggregator.recordAction(cmp, description, miscData);
-          return cmp;
-        },
-        beginLoadWithCmpUserActionMiscData: function(aggregator, cmp, description, miscData) {
-          if (description == null) {
-            description = 'an action';
-          }
-          if (miscData == null) {
-            miscData = {};
-          }
-          aggregator.beginLoad(cmp, description, miscData);
-          return cmp;
-        },
-        endLoadWithCmp: function(aggregator, cmp) {
-          aggregator.endLoad(cmp);
-          return cmp;
-        }
-      });
-      describe("calls that pass component and options params", function() {
-        beforeEach(function() {
-          var aggregator, panel;
-          panel = new Panel();
-          aggregator = this.createAggregator();
-          this.recordActionWithCmpOptions(aggregator, panel);
-          this.beginLoadWithCmpOptions(aggregator, panel);
-          this.endLoadWithCmp(aggregator, panel);
-          this.actionEvent = this.sentEvents[0];
-          return this.loadEvent = this.sentEvents[1];
-        });
-        return describe("action", function() {
-          it("should record the action correctly", function() {
-            expect(this.actionEvent.bts).toBeANumber();
-            expect(this.actionEvent.tId).toBeAString();
-            return expect(this.actionEvent.eId).toEqual(this.actionEvent.tId);
-          });
-          return it("should record the load correctly", function() {
-            expect(this.loadEvent.bts).toBeANumber();
-            expect(this.loadEvent.eId).toBeAString();
-            expect(this.loadEvent.tId).toBeAString();
-            expect(this.loadEvent.pId).toBeAString();
-            return expect(this.loadEvent.pId).toEqual(this.actionEvent.eId);
-          });
-        });
-      });
-      return describe("calls that pass component, description and miscData params", function() {
-        beforeEach(function() {
-          var aggregator, panel;
-          panel = new Panel();
-          aggregator = this.createAggregator();
-          this.recordActionWithCmpUserActionMiscData(aggregator, panel);
-          this.beginLoadWithCmpUserActionMiscData(aggregator, panel);
-          this.endLoadWithCmp(aggregator, panel);
-          this.actionEvent = this.sentEvents[0];
-          return this.loadEvent = this.sentEvents[1];
-        });
-        return describe("action", function() {
-          it("should record the action correctly", function() {
-            expect(this.actionEvent.bts).toBeANumber();
-            expect(this.actionEvent.tId).toBeAString();
-            return expect(this.actionEvent.eId).toEqual(this.actionEvent.tId);
-          });
-          return it("should record the load correctly", function() {
-            expect(this.loadEvent.bts).toBeANumber();
-            expect(this.loadEvent.eId).toBeAString();
-            expect(this.loadEvent.tId).toBeAString();
-            expect(this.loadEvent.pId).toBeAString();
-            return expect(this.loadEvent.pId).toEqual(this.actionEvent.eId);
-          });
-        });
       });
     });
   });

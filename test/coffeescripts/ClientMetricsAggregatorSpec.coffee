@@ -17,30 +17,9 @@ class Panel
 
     hierarchy
 
-class AjaxProvider
-  constructor: (@spec) ->
-    @events = {}
-
-  request: (options) ->
-    @spec.connection = this
-    _.extend(this, options)
-    @fireEvent "beforerequest", this, options
-    response = getResponseHeader: RallyRequestID: @spec.rallyRequestId
-    @fireEvent "requestcomplete", this, response, options
-
-  on: (event, fn, scope) ->
-    @events[event] = { fn, scope }
-
-  fireEvent: (event) ->
-    ev = @events[event]
-    if ev
-      ev.fn.apply(ev.scope || this, _.toArray(arguments).slice(1))
-
 describe "RallyMetrics.ClientMetricsAggregator", ->
   beforeEach ->
-    @ajaxProvider = new AjaxProvider(this)
     @rallyRequestId = 123456
-    @spy(@ajaxProvider, "request")
     
   helpers
     recordAction: (aggregator, cmp, description="an action") ->
@@ -77,7 +56,6 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       aggregatorConfig = _.defaults config,
         sender: @createSender()
         handlers: [handler]
-        ajaxProviders: [@ajaxProvider]
   
       new RallyMetrics.ClientMetricsAggregator(aggregatorConfig)
 
@@ -168,49 +146,72 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       expect(aggregator.sender.flush).toHaveBeenCalledOnce()
 
   describe 'data requests', ->
+    beforeEach ->
+      @xhrFake = sinon.useFakeXMLHttpRequest()
+      @requests = []
+      @xhrFake.onCreate = (xhr) =>
+        @requests.push xhr
+
+    afterEach ->
+      @xhrFake.restore()
+
     it "should trim the request url correctly", ->
-      @createAggregatorAndRecordAction()
+      aggregator = @createAggregatorAndRecordAction()
       
       expectedUrl = "3.14/Foo.js"
       entireUrl = "http://localhost/testing/webservice/#{expectedUrl}?bar=baz&boo=buzz"
-  
-      @ajaxProvider.request
-        requester: this
-        url: entireUrl
+
+      metricsData = aggregator.beginDataRequest this, entireUrl
+      aggregator.endDataRequest this, @xhrFake, metricsData.requestId
 
       dataEvent = @findDataEvent()
       expect(dataEvent.url).toEqual expectedUrl
     
     it "should have the component hierarchy", ->
-      @createAggregatorAndRecordAction()
-      @ajaxProvider.request
-        requester: new Panel()
+      aggregator = @createAggregatorAndRecordAction()
+      requester = new Panel()
+
+      metricsData = aggregator.beginDataRequest requester, "someUrl"
+      aggregator.endDataRequest requester, @xhrFake, metricsData.requestId
       
       dataEvent = @findDataEvent()
       expect(dataEvent.cmpH).toEqual "Panel"
       
-    it "appends ID properties to AJAX headers", ->
-      @createAggregatorAndRecordAction()
-      @ajaxProvider.request
-        requester: this
+    it "returns ID properties for AJAX headers", ->
+      aggregator = @createAggregatorAndRecordAction()
+      requester = this
 
+      metricsData = aggregator.beginDataRequest requester, "someUrl"
+      aggregator.endDataRequest requester, @xhrFake, metricsData.requestId
+      
       actionEvent = @findActionEvent()
       dataEvent = @findDataEvent()
 
-      expect(@connection.defaultHeaders['X-Parent-Id']).toEqual dataEvent.eId
-      expect(@connection.defaultHeaders['X-Trace-Id']).toEqual actionEvent.eId
+      expect(metricsData.xhrHeaders).toEqual 'X-Parent-Id': dataEvent.eId, 'X-Trace-Id': actionEvent.eId
   
-    it "does not append ID properties to AJAX headers when request is not instrumented", ->
-      @createAggregatorAndRecordAction()
-      @ajaxProvider.request {}
-  
-      expect(@connection.defaultHeaders['X-Parent-Id']).toBeUndefined()
-      expect(@connection.defaultHeaders['X-Trace-Id']).toBeUndefined()
+    it "does not return ID properties for AJAX headers when request is not instrumented", ->
+      aggregator = @createAggregatorAndRecordAction()
+      
+      metricsData = aggregator.beginDataRequest null, "someUrl"
+      
+      expect(metricsData).toBeUndefined()
       
     it "appends the rallyRequestId onto dataRequest events", ->
-      @createAggregatorAndRecordAction()
-      @ajaxProvider.request
-        requester: this
+      aggregator = @createAggregatorAndRecordAction()
+
+      request = null
+
+      @xhrFake.onCreate = (xhr) =>
+        request = xhr
+        xhr.setResponseHeaders
+          rallyrequestid: @rallyRequestId
+
+      xhr = new XMLHttpRequest()
+      xhr.open("GET", "/123")
+      xhr.send()
+      
+      metricsData = aggregator.beginDataRequest this, "someUrl"
+      aggregator.endDataRequest this, request, metricsData.requestId
 
       dataEvent = @findDataEvent()
       expect(dataEvent.rallyRequestId).toEqual @rallyRequestId
@@ -400,82 +401,3 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
       
       actionEvent = @findActionEvent()
       expect(actionEvent.foo).toEqual "bar"
-
-  describe "legacy API", ->
-    helpers
-      recordActionWithCmpOptions: (aggregator, cmp, description="an action") ->
-        aggregator.recordAction cmp,
-          description: description 
-        
-        return cmp
-
-      beginLoadWithCmpOptions: (aggregator, cmp, description='an action', miscData={}) ->
-        aggregator.beginLoad cmp,
-          description: description
-          miscData: miscData
-
-        return cmp
-
-      recordActionWithCmpUserActionMiscData: (aggregator, cmp, description="an action", miscData={}) ->
-        aggregator.recordAction cmp, description, miscData
-        return cmp
-
-      beginLoadWithCmpUserActionMiscData: (aggregator, cmp, description='an action', miscData={}) ->
-        aggregator.beginLoad cmp, description, miscData
-        return cmp
-
-      endLoadWithCmp: (aggregator, cmp) ->
-        # since endLoad is so simple, it's only had two formats: [cmp], and [options.component]
-        aggregator.endLoad cmp
-
-        return cmp
-
-    describe "calls that pass component and options params", ->    
-      beforeEach ->
-        panel = new Panel()
-        aggregator = @createAggregator()
-
-        @recordActionWithCmpOptions(aggregator, panel)
-        @beginLoadWithCmpOptions(aggregator, panel)
-        @endLoadWithCmp(aggregator, panel)
-        
-        @actionEvent = @sentEvents[0]
-        @loadEvent = @sentEvents[1]
-
-      describe "action", ->
-        it "should record the action correctly", ->
-          expect(@actionEvent.bts).toBeANumber()
-          expect(@actionEvent.tId).toBeAString()
-          expect(@actionEvent.eId).toEqual @actionEvent.tId
-
-        it "should record the load correctly", ->
-          expect(@loadEvent.bts).toBeANumber()
-          expect(@loadEvent.eId).toBeAString()
-          expect(@loadEvent.tId).toBeAString()
-          expect(@loadEvent.pId).toBeAString()
-          expect(@loadEvent.pId).toEqual @actionEvent.eId
-
-    describe "calls that pass component, description and miscData params", ->    
-      beforeEach ->
-        panel = new Panel()
-        aggregator = @createAggregator()
-
-        @recordActionWithCmpUserActionMiscData(aggregator, panel)
-        @beginLoadWithCmpUserActionMiscData(aggregator, panel)
-        @endLoadWithCmp(aggregator, panel)
-        
-        @actionEvent = @sentEvents[0]
-        @loadEvent = @sentEvents[1]
-
-      describe "action", ->
-        it "should record the action correctly", ->
-          expect(@actionEvent.bts).toBeANumber()
-          expect(@actionEvent.tId).toBeAString()
-          expect(@actionEvent.eId).toEqual @actionEvent.tId
-
-        it "should record the load correctly", ->
-          expect(@loadEvent.bts).toBeANumber()
-          expect(@loadEvent.eId).toBeAString()
-          expect(@loadEvent.tId).toBeAString()
-          expect(@loadEvent.pId).toBeAString()
-          expect(@loadEvent.pId).toEqual @actionEvent.eId          
