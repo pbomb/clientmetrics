@@ -6,9 +6,6 @@
     var MIN_EVENT_LENGTH = 1700;
     var MAX_EVENT_LENGTH = 2000;
 
-    // how long an error's info can be, for error events
-    var MAX_ERROR_LENGTH = Math.floor(MAX_EVENT_LENGTH * 0.9);
-
     /**
      * @class Rally.clientmetrics.BatchSender
      * @private
@@ -37,20 +34,15 @@
 
     _.extend(BatchSender.prototype, {
 
-        send: function(events) {
-            var cleanedEvents = _.map(events, this._cleanedEvents, this);
-
-            this._eventQueue = this._eventQueue.concat(cleanedEvents);
-
-            while (this._canSendBatch()) {
-                this._sendBatch();
-            }
+        send: function(event) {
+            this._eventQueue.push(this._cleanEvent(event));
+            this._sendBatches();
         },
 
         flush: function() {
-            while (this._eventQueue.length > 0) {
-                this._sendBatch();
-            }
+            this._sendBatches();
+            // send remaining events
+            this._sendBatch(this._getNextBatch(true));
         },
 
         getPendingEvents: function() {
@@ -60,70 +52,46 @@
         getMaxLength: function() {
             return this.maxLength;
         },
+
+        _sendBatches: function() {
+            var nextBatch;
+            while (nextBatch = this._getNextBatch()) {
+                this._sendBatch(nextBatch);
+            }
+        },
         
-        _cleanedEvents: function(event) {
+        _cleanEvent: function(event) {
             return _.omit(event, this.keysToIgnore);
         },
 
-        /**
-         * Determines how long the event will be, in characters, once it is
-         * encoded into GET query parameters.
-         * @param event The event to measure
-         * @param options some additional options that can be used to influence the measurement
-         * -- estimateIndices: Appends extra length to the measured length to account for when the event gets indices added
-         * -- indexSize: use this when the indexSize is known before hand for a more accurate measurement
-         */
-        _getEventLength: function(event, options) {
-            var baseLength = this._toQueryString(event).length;
+        _getNextBatch: function(forceIncludeAll) {
+            var batchObj = {},
+                batchString,
+                toBeSent = [],
+                url = this._getUrl() + '?';
 
-            // the additional 1 is either the question mark if it's the first set of parameters
-            // or an additional & that will go in between each set
-            baseLength += 1;
+            _.each(this._eventQueue, function(event, currentIndex) {
+                var eventCopy = this._appendIndexToKeys(event, currentIndex),
+                    possibleBatchObj = _.extend(batchObj, eventCopy),
+                    possibleBatchString = url + this._toQueryString(possibleBatchObj);
 
-            if (options) {
-                var keyCount = _.keys(event).length;
-
-                var indexSize;
-                if (options.estimateIndices) {
-                    // keys will always have at least .x appended to them,
-                    // so add two characters per key
-                    indexSize = 2;
-                }
-                if (options.indexSize) {
-                    // add one for the period
-                    indexSize = options.indexSize + 1;
-                }
-
-                baseLength += keyCount * indexSize;
-            }
-
-
-            return baseLength;
-        },
-
-        /**
-         * Determines whether there are enough events in the queue to cause a batch to go out.
-         * Uses the config minLength to determine if enough data is available.
-         */
-        _canSendBatch: function() {
-            if (this._eventQueue.length === 0) {
-                return false;
-            }
-
-            var currentLength = this._getUrl().length;
-
-            var canSend = false;
-
-            _.each(this._eventQueue, function(event) {
-                currentLength += this._getEventLength(event, { estimateIndices: true });
-
-                if (currentLength >= this.minLength && currentLength < this.maxLength) {
-                    canSend = true;
+                if (forceIncludeAll || possibleBatchString.length < this.maxLength) {
+                    toBeSent.push(event);
+                    batchString = possibleBatchString;
+                    batchObj = possibleBatchObj;
+                } else {
                     return false;
                 }
             }, this);
 
-            return canSend;
+            if (_.isEmpty(toBeSent) || (!forceIncludeAll && batchString.length < this.minLength)) {
+                return null;
+            }
+
+            return {
+                url: batchString,
+                events: toBeSent
+            };
         },
 
         /**
@@ -135,46 +103,20 @@
          * @param index
          */
         _appendIndexToKeys: function(event, index) {
-            var keys = _.keys(event);
-
-            _.each(keys, function(key) {
-                event[key + '.' + index] = event[key];
-                delete event[key];
+            return _.transform(event, function(result, value, key) {
+                result[key + '.' + index] = value;
             });
-        },
-
-        /**
-         * Takes all the events in the array and flattens them into one object
-         */
-        _flatten: function(eventArray) {
-            return _.reduce(eventArray, function(flattened, e) {
-                return _.merge(flattened, e);
-            }, {});
         },
 
         /**
          * Causes a batch to get sent out to the configured endpoint
          */
-        _sendBatch: function() {
-            var currentIndex = 0;
-            var currentLength = this._getUrl().length;
-
-            var toBeSent = [];
-            _.each(this._eventQueue, function(event) {
-                var eventLength = this._getEventLength(event, { indexSize: currentIndex.toString().length });
-                if (currentLength + eventLength < this.maxLength) {
-                    this._appendIndexToKeys(event, currentIndex);
-                    currentIndex += 1;
-
-                    toBeSent.push(event);
-                    currentLength += eventLength;
-                } else {
-                    return false;
-                }
-            }, this);
-
-            this._makeGetRequest(toBeSent);
-            this._eventQueue = _.difference(this._eventQueue, toBeSent);
+        _sendBatch: function(batch) {
+            if (!batch) {
+                return;
+            }
+            this._makeGetRequest(batch.url);
+            this._eventQueue = _.difference(this._eventQueue, batch.events);
         },
 
         /**
@@ -198,36 +140,16 @@
          * the method that actually sends the GET request to the endpoint. It is done
          * by adding an img to the DOM and its src being set to the created beaconUrl.
          */
-        _makeGetRequest: function(data) {
-            if (_.isArray(data)) {
-                data = this._flatten(data);
-            }
+        _makeGetRequest: function(url) {
+            var img = document.createElement("img");
+            img.style.width = 0;
+            img.style.height = 0;
+            img.style.display = 'none';
+            img.addEventListener('load', this._removeImageFromDom, false);
+            img.addEventListener('error', this._removeImageFromDom, false);
 
-            var encodedParameters = this._toQueryString(data);
-
-            if (encodedParameters.length > 0) {
-                var beaconUrl = this._getUrl();
-                var fullUrl = beaconUrl + '?' + encodedParameters;
-
-                var imgConfig = {
-                    tag: 'img',
-                    style: {
-                        width: 0,
-                        height: 0,
-                        display: 'none'
-                    }
-                };
-
-                var img = document.createElement("img");
-                img.style.width = 0;
-                img.style.height = 0;
-                img.style.display = 'none';
-                img.addEventListener('load', this._removeImageFromDom, false);
-                img.addEventListener('error', this._removeImageFromDom, false);
-
-                document.body.appendChild(img);
-                img.src = fullUrl;
-            }
+            document.body.appendChild(img);
+            img.src = url;
         }
     });
 

@@ -9,7 +9,6 @@
     // bookkeeping properties that are set on components being measured
     var _currentEventId = '__clientMetricsCurrentEventId__';
     var _metricsIdProperty = '__clientMetricsID__';
-    var _ajaxRequestId = '__clientMetricsAjaxRequestId__';
 
     /**
      * @class RallyMetrics.ClientMetricsAggregator
@@ -53,13 +52,6 @@
      */
     var ClientMetricsAggregator = function(config) {
         _.extend(this, config);
-
-        if (_.isArray(config.ajaxProviders)) {
-            _.each(config.ajaxProviders, function(provider) {
-                provider.on('beforerequest', this.beginDataRequest, this);
-                provider.on('requestcomplete', this.endDataRequest, this);
-            }, this);
-        }
 
         this._pendingEvents = [];
         this._browserTabId = this._getUniqueId();
@@ -113,8 +105,7 @@
         /**
          * Handles the action client metrics message. Starts and completes a client metric event
          */
-        recordAction: function(opts, eOpts) {
-            options = this._translateMessageVersion(arguments);
+        recordAction: function(options) {
 
             var cmp = options.component;
             delete options.component;
@@ -130,7 +121,7 @@
                 eId: eventId,
                 tId: eventId,
                 status: 'Ready',
-                cmpType: this._getFromHandlers(cmp, 'getComponentType'),
+                cmpType: this.getComponentType(cmp),
                 start: startTime
             }, options.miscData));
 
@@ -172,9 +163,7 @@
         /**
          * Handles the beginLoad client metrics message. Starts an event
          */
-        beginLoad: function(opts, eOpts) {
-            options = this._translateMessageVersion(arguments);
-
+        beginLoad: function(options) {
             var cmp = options.component;
             delete options.component;
             if (!this._currentUserActionEventId) {
@@ -198,7 +187,7 @@
                 eDesc: options.description,
                 cmpId: this._getComponentId(cmp),
                 eId: eventId,
-                cmpType: this._getFromHandlers(cmp, 'getComponentType'),
+                cmpType: this.getComponentType(cmp),
                 tId: this._currentUserActionEventId,
                 pId: this._findParentId(cmp, this._currentUserActionEventId),
                 start: startTime
@@ -209,9 +198,7 @@
         /**
          * Handles the endLoad client metrics message. Finishes an event
          */
-        endLoad: function(opts) {
-            options = this._translateMessageVersion(arguments);
-
+        endLoad: function(options) {
             var cmp = options.component;
             delete options.component;
             if (!this._currentUserActionEventId) {
@@ -247,23 +234,21 @@
          * Handler for before Ajax requests go out. Starts an event for the request,
          * Adds headers to the ajax request that links the request with the client metrics data
          */
-        beginDataRequest: function(connection, options) {
-            var requester = this._findRequester(connection, options);
-
+        beginDataRequest: function(requester, url) {
+            var metricsData;
             if (requester && this._currentUserActionEventId) {
                 var eventId = this._getUniqueId();
                 var traceId = this._currentUserActionEventId;
                 var parentId = this._findParentId(requester, this._currentUserActionEventId);
                 var ajaxRequestId = this._getUniqueId();
-                options[_ajaxRequestId] = ajaxRequestId;
                 requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
 
                 this._startEvent({
                     eType: 'dataRequest',
                     cmp: requester,
                     cmpH: this._getHierarchyString(requester),
-                    url: this._getUrl(options.url),
-                    cmpType: this._getFromHandlers(requester, 'getComponentType'),
+                    url: this._getUrl(url),
+                    cmpType: this.getComponentType(requester),
                     cmpId: this._getComponentId(requester),
                     eId: eventId,
                     tId: traceId,
@@ -275,25 +260,25 @@
                 // the "parent" of the server side event that responds.
                 // So in the request headers, sending the current event Id as
                 // the parent Id.
-                connection.defaultHeaders = {
-                    'X-Trace-Id': traceId,
-                    'X-Parent-Id': eventId
+                metricsData = {
+                    requestId: ajaxRequestId,
+                    xhrHeaders: {
+                        'X-Trace-Id': traceId,
+                        'X-Parent-Id': eventId
+                    }
                 };
-            } else {
-                connection.defaultHeaders = {};
             }
+
+            return metricsData;
         },
 
         /**
          * handler for after the Ajax request has finished. Finishes an event for the data request
          */
-        endDataRequest: function(connection, response, options) {
-            var requester = this._findRequester(connection, options);
-
+        endDataRequest: function(requester, xhr, requestId) {
             if (requester && this._currentUserActionEventId) {
-                var ajaxRequestId = options[_ajaxRequestId];
-
-                var eventId = requester[_currentEventId + 'dataRequest' + ajaxRequestId];
+                
+                var eventId = requester[_currentEventId + 'dataRequest' + requestId];
 
                 var event = this._findPendingEvent(eventId);
                 if (!event) {
@@ -306,7 +291,7 @@
                 var newEventData = {
                     status: 'Ready'
                 };
-                var rallyRequestId = this._getRallyRequestId(response);
+                var rallyRequestId = this._getRallyRequestId(xhr);
 
                 if (rallyRequestId) {
                     newEventData.rallyRequestId = rallyRequestId;
@@ -322,6 +307,10 @@
          */
         sendAllRemainingEvents: function() {
             this.sender.flush();
+        },
+
+        getComponentType: function(cmp) {
+            return this._getFromHandlers(cmp, 'getComponentType');
         },
 
         /**
@@ -373,7 +362,7 @@
 
             this._pendingEvents = _.without(this._pendingEvents, existingEvent);
 
-            this.sender.send([event]);
+            this.sender.send(event);
         },
 
         /**
@@ -458,46 +447,9 @@
                 return 'none';
             }
 
-            var names = _.map(hierarchy, function(h) {
-                return this._getFromHandlers(h, 'getComponentType');
-            }, this);
+            var names = _.map(hierarchy, this.getComponentType, this);
 
             return _.compact(names).join(':');
-        },
-
-        _translateMessageVersion: function(messageArgs) {
-            messageArgs = _.toArray(messageArgs);
-
-            var firstParamIsAComponent = !!this._getFromHandlers(messageArgs[0], 'getComponentType');
-
-            if (firstParamIsAComponent && _.isString(messageArgs[1])) {
-                // very old message: received [cmp, description, miscdata, eOpts]
-                return {
-                    component: messageArgs[0],
-                    description: messageArgs[1],
-                    miscData: messageArgs[2] || {}
-                };
-            } else if (firstParamIsAComponent && messageArgs[1] && _.isString(messageArgs[1].description)) {
-                // intermediate message: received [cmp, options, eOpts]
-                return _.extend(messageArgs[1], {
-                    component: messageArgs[0]
-                });
-            } else if (firstParamIsAComponent) {
-                // old format for endLoad: received [cmp, eOpts]
-                return {
-                    component: messageArgs[0]
-                };
-            } else {
-                // new style message: received [options, eOpts]
-                return messageArgs[0];
-            }
-        },
-
-        /**
-         * Finds the requester, if any, for the related data request objects
-         */
-        _findRequester: function(connection, options) {
-            return options.requester || connection.requester || (options.operation && options.operation.requester);
         },
 
         /**
@@ -542,7 +494,7 @@
          * @param response the response that came back from an Ajax request
          */
         _getRallyRequestId: function(response) {
-            return response && response.getResponseHeader && response.getResponseHeader.RallyRequestID;
+            return response && response.getResponseHeader && response.getResponseHeader('RallyRequestID');
         },
 
         /**
