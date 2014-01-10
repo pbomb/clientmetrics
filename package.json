@@ -1,7 +1,7 @@
 {
-  "name": "clientmetrics",
+  "name": "rallymetrics",
   "version": "0.1.0",
-  "description": "Client Metrics aggregation for Rally Software",
+  "description": "Metrics aggregation for Rally Software",
   "main": "index.js",
   "scripts": {
     "test": "grunt test"
