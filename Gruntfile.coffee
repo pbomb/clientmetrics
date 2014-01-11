@@ -111,7 +111,7 @@ module.exports = (grunt) ->
         src: ['src/main.js'],
         dest: 'bundle.js',
         options:
-          external: [ 'underscore', 'when' ],
+          external: [ 'underscore' ],
           alias: ['src/main.js:RallyMetrics']
 
     'browserify-object':
@@ -129,11 +129,11 @@ module.exports = (grunt) ->
         objectToExport: "require('RallyMetrics')"
         globalAlias: 'RallyMetrics'
         deps:
-          'default': ['_', 'when']
-          amd: ['underscore', 'when']
-          cjs: ['underscore', 'when']
-          global: ['_', 'when']
-        browserifyMapping: '{"underscore":_, "when": when}'
+          'default': ['_']
+          amd: ['underscore']
+          cjs: ['underscore']
+          global: ['_']
+        browserifyMapping: '{"underscore":_}'
 
     open:
       docs:
