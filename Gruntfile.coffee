@@ -1,9 +1,9 @@
 path = require 'path'
 module.exports = (grunt) ->
 
-  serverPort = grunt.option('port') || 8893
-  inlinePort = grunt.option('port') || 8894
-  docsPort = grunt.option('port') || 8895
+  serverPort = grunt.option('port') || 8894
+  inlinePort = grunt.option('port') || 8895
+  docsPort = grunt.option('port') || 8896
 
   grunt.loadNpmTasks 'grunt-browserify'
   grunt.loadNpmTasks 'grunt-contrib-coffee'
