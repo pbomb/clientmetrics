@@ -55,7 +55,7 @@
 
         _sendBatches: function() {
             var nextBatch;
-            while (nextBatch = this._getNextBatch()) {
+            while ((nextBatch = this._getNextBatch())) {
                 this._sendBatch(nextBatch);
             }
         },

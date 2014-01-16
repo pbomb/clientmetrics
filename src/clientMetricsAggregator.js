@@ -110,7 +110,7 @@
             var cmp = options.component;
             delete options.component;
             var eventId = this._getUniqueId();
-            var startTime = this._convertToRelativeTime(options.startTime || new Date().getTime());
+            var startTime = this._getRelativeTime(options.startTime || new Date().getTime());
 
             var action = this._startEvent(_.defaults({
                 eType: 'action',
@@ -175,7 +175,7 @@
                 return;
             }
 
-            var startTime = this._convertToRelativeTime(options.startTime || new Date().getTime());
+            var startTime = this._getRelativeTime(options.startTime || new Date().getTime());
 
             var eventId = this._getUniqueId();
             cmp[_currentEventId + 'load'] = eventId;
@@ -223,7 +223,7 @@
                 return;
             }
 
-            options.stop = this._convertToRelativeTime(options.stopTime || new Date().getTime());
+            options.stop = this._getRelativeTime(options.stopTime || new Date().getTime());
 
             this._finishEvent(event, _.extend({
                 status: 'Ready'
@@ -316,26 +316,21 @@
         /**
          * Creates a version 4 UUID
          */
+         /* jshint ignore:start */
         _getUniqueId: function() {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
                 return v.toString(16);
             });
         },
+        /* jshint ignore:end */
 
         /**
          * Gets the current timestamp relative to the starting time
-         */
-        _getRelativeTime: function() {
-            return this._convertToRelativeTime(new Date().getTime());
-        },
-
-        /**
-         * Converts a timestamp relative to the starting time
          * @param {Number} timestamp Timestamp to be converted
          */
-        _convertToRelativeTime: function(timestamp) {
-            return timestamp - this._startingTime;
+        _getRelativeTime: function(timestamp) {
+            return (timestamp || new Date().getTime()) - this._startingTime;
         },
 
         /**

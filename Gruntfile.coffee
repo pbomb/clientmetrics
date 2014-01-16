@@ -206,6 +206,7 @@ module.exports = (grunt) ->
     jshint:
       files: [
         'src/**/*.js'
+        '!src/main.js'
       ]
       options:
         bitwise: true
