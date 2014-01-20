@@ -117,11 +117,6 @@ module.exports = (grunt) ->
           global: ['_']
         browserifyMapping: '{"underscore":_}'
 
-    open:
-      docs:
-        path: "http://localhost:#{docsPort}/doc/index.html"
-        app: grunt.option('browser') || 'Google Chrome'
-
     express:
       options:
         bases: [
@@ -162,7 +157,6 @@ module.exports = (grunt) ->
             "test/support/sinon/rally-sinon-config.js"
 
             # Mocks and helpers
-            # "test/javascripts/support/mock/**/*.js"
 
             # Jasmine overrides
             "test/support/jasmine/jasmine-html-overrides.js"
@@ -212,7 +206,7 @@ module.exports = (grunt) ->
         repository: 'thirdparty'
       client:
         files: [
-          { expand: true, cwd: '.', src: ['builds/**/*', 'src/**/*', 'test/**/*'] }
+          { expand: true, cwd: '.', src: ['builds/**/*', 'src/**/*'] }
         ]
         options:
           fetch: grunt.file.readJSON('js_dependencies.json')
