@@ -45,9 +45,7 @@
         },
 
         flush: function() {
-            this._sendBatches();
-            // send remaining events
-            this._sendBatch(this._getNextBatch(true));
+            this._sendBatches(true);
         },
 
         getPendingEvents: function() {
@@ -58,9 +56,9 @@
             return this.maxLength;
         },
 
-        _sendBatches: function() {
+        _sendBatches: function(forceIncludeAll) {
             var nextBatch;
-            while ((nextBatch = this._getNextBatch())) {
+            while ((nextBatch = this._getNextBatch(forceIncludeAll))) {
                 this._sendBatch(nextBatch);
             }
         },
@@ -80,7 +78,7 @@
                     possibleBatchObj = _.extend(batchObj, eventCopy),
                     possibleBatchString = url + this._toQueryString(possibleBatchObj);
 
-                if (forceIncludeAll || possibleBatchString.length < this.maxLength) {
+                if (possibleBatchString.length < this.maxLength) {
                     toBeSent.push(event);
                     batchString = possibleBatchString;
                     batchObj = possibleBatchObj;
