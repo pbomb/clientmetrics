@@ -13,7 +13,7 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-contrib-uglify'
   grunt.loadNpmTasks 'grunt-express'
-  grunt.loadNpmTasks 'grunt-jsduck'
+  grunt.loadNpmTasks 'grunt-jsdoc'
   grunt.loadNpmTasks 'grunt-nexus-artifact'
   grunt.loadNpmTasks 'grunt-regex-check'
   grunt.loadNpmTasks 'grunt-webdriver-jasmine-runner'
@@ -31,7 +31,7 @@ module.exports = (grunt) ->
 
   grunt.registerTask 'check', 'Run convention tests on all files', ['regex-check']
 
-  grunt.registerTask 'nexus:deploy', 'Cleans and builds the SDK and deploys to nexus', ['clean:build', 'build', 'nexus:client:publish']
+  grunt.registerTask 'nexus:deploy', 'Cleans and builds the SDK and deploys to nexus', ['clean:build', 'build', 'jsdoc', 'nexus:client:publish']
   grunt.registerTask 'fetch', 'Fetches the dependencies from Nexus', ['clean:dependencies', 'nexus:client:fetch']
 
   grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'webdriver_jasmine_runner:appsdk']
@@ -206,7 +206,7 @@ module.exports = (grunt) ->
         repository: 'thirdparty'
       client:
         files: [
-          { expand: true, cwd: '.', src: ['builds/**/*', 'src/**/*'] }
+          { expand: true, cwd: '.', src: ['builds/**/*', 'src/**/*', 'doc/**/*'] }
         ]
         options:
           fetch: grunt.file.readJSON('js_dependencies.json')
@@ -233,6 +233,12 @@ module.exports = (grunt) ->
       js:
         files:
           'builds/rallymetrics.min.js' : 'builds/rallymetrics.js'
+
+    jsdoc:
+      dist:
+        src: ['src/**/*.js']
+        options:
+          destination: 'doc'
 
   # Only recompile changed coffee files
   changedFiles = Object.create null
