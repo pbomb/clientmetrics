@@ -17,7 +17,7 @@ class Panel
 
     hierarchy
 
-describe "RallyMetrics.ClientMetricsAggregator", ->
+describe "RallyMetrics.Aggregator", ->
   beforeEach ->
     @rallyRequestId = 123456
     
@@ -57,7 +57,7 @@ describe "RallyMetrics.ClientMetricsAggregator", ->
         sender: @createSender()
         handlers: [handler]
   
-      new RallyMetrics.ClientMetricsAggregator(aggregatorConfig)
+      new RallyMetrics.Aggregator(aggregatorConfig)
 
     createSender: ->
       @sentEvents = []

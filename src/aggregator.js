@@ -11,7 +11,7 @@
     var _metricsIdProperty = '__clientMetricsID__';
 
     /**
-     * @class RallyMetrics.ClientMetricsAggregator
+     * @class RallyMetrics.Aggregator
      * An aggregator that listens to all client metric related messages that go out on
      * the message bus and creates a cohesive picture of what is happening, then pushes
      * this data out to an endpoint which collects the data for analysis
@@ -50,7 +50,7 @@
      * @param {Number} [config.flushInterval] If defined, events will be sent at least that often.
      * @param {String} [config.beaconUrl = "https://trust.rallydev.com/beacon/"] URL where the beacon is located.
      */
-    var ClientMetricsAggregator = function(config) {
+    var Aggregator = function(config) {
         _.extend(this, config);
 
         this._pendingEvents = [];
@@ -78,7 +78,7 @@
         }
     };
 
-    _.extend(ClientMetricsAggregator.prototype, {
+    _.extend(Aggregator.prototype, {
 
         destroy: function() {
             if (this._flushIntervalId) {
@@ -514,5 +514,5 @@
         }
     });
 
-    module.exports = ClientMetricsAggregator;
+    module.exports = Aggregator;
 })();
