@@ -11,13 +11,11 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-contrib-jshint'
   grunt.loadNpmTasks 'grunt-contrib-watch'
-  grunt.loadNpmTasks 'grunt-contrib-copy'
   grunt.loadNpmTasks 'grunt-contrib-uglify'
   grunt.loadNpmTasks 'grunt-express'
   grunt.loadNpmTasks 'grunt-jsduck'
   grunt.loadNpmTasks 'grunt-nexus-artifact'
   grunt.loadNpmTasks 'grunt-regex-check'
-  grunt.loadNpmTasks 'grunt-shell'
   grunt.loadNpmTasks 'grunt-webdriver-jasmine-runner'
   grunt.loadNpmTasks 'grunt-text-replace'
   grunt.loadNpmTasks 'grunt-open'
@@ -33,12 +31,8 @@ module.exports = (grunt) ->
 
   grunt.registerTask 'check', 'Run convention tests on all files', ['regex-check']
 
-  grunt.registerTask 'doc', 'Generates the AppSDK Docs', ['clean:doc', 'coffee', 'build', 'jsduck', 'shell:ruidoc', 'copy:jsduck', 'example']
-  grunt.registerTask 'doc:check', 'Generates the AppSDK Docs and opens the browser to view them', ['doc', 'express:docs', 'open:docs', 'express-keepalive']
-  grunt.registerTask 'doc:check:fast', 'Generates the AppSDK Docs without rebuilding everything and opens the browser to view them', ['jsduck', 'shell:ruidoc', 'copy:jsduck', 'example', 'express:docs', 'open:docs', 'express-keepalive']
-
   grunt.registerTask 'nexus:deploy', 'Cleans and builds the SDK and deploys to nexus', ['clean:build', 'build', 'nexus:client:publish']
-  grunt.registerTask 'fetch', 'Fetches the dependencies from Nexus', ['nexus:client:fetch']
+  grunt.registerTask 'fetch', 'Fetches the dependencies from Nexus', ['clean:dependencies', 'nexus:client:fetch']
 
   grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'webdriver_jasmine_runner:appsdk']
   grunt.registerTask 'test:fast', 'Just configs and runs the tests. Does not do any compiling. grunt && grunt watch should be running.', ['test:__buildjasmineconf__', 'express:inline', 'webdriver_jasmine_runner:appsdk']
@@ -78,9 +72,6 @@ module.exports = (grunt) ->
       browserify: [
         'bundle.js'
       ]
-      doc: [
-        "#{buildDir}/doc"
-      ]
 
     watch:
       coffee:
@@ -88,15 +79,6 @@ module.exports = (grunt) ->
         tasks: ['coffee:tests']
         options:
           spawn: false
-
-    copy:
-      jsduck:
-        files: [
-          { expand: true, cwd: 'doc/files/', src: ['*'], dest: 'builds/doc/' }
-          { expand: true, cwd: 'doc/images/', src: ['**/*'], dest: 'builds/doc/images/'}
-          { expand: true, cwd: 'lib/ext/4.1.1a/docs/images/', src: '**/*', dest: 'builds/doc/images/' }
-          { expand: true, cwd: 'doc/sdk-examples/', src: ['default-example-icon.png', 'examples.css'], dest: 'builds/doc/examples'}
-        ]
 
     coffee:
       tests:
@@ -175,7 +157,7 @@ module.exports = (grunt) ->
             "builds/rallymetrics.js"
 
             # 3rd party libraries & customizations
-            "test/support/sinon/sinon-1.6.0.js"
+            "test/support/sinon/sinon-1.7.3.js"
             "test/support/sinon/jasmine-sinon.js"
             "test/support/sinon/rally-sinon-config.js"
 
@@ -237,11 +219,6 @@ module.exports = (grunt) ->
           publish: [
             { id: 'com.rallydev.js:rallymetrics:tgz', version: '<%= version %>', path: 'target/' }
           ]
-
-    shell:
-      options:
-        stdout: true
-        stderr: true
 
     "regex-check":
       consolelogs:

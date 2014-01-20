@@ -29,8 +29,6 @@
     "grunt-express": "~1.0.1",
     "express": "~3.3.4",
     "grunt-regex-check": "~0.1.5",
-    "grunt-shell": "~0.3.1",
-    "grunt-contrib-copy": "~0.4.1",
     "grunt-jsduck": "~1.0.0",
     "grunt-text-replace": "~0.3.6",
     "grunt-open": "~0.2.2",
