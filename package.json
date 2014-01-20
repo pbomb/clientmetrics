@@ -21,6 +21,10 @@
   "bugs": {
     "url": "https://github.com/RallySoftware/clientmetrics/issues"
   },
+  "files": [
+    "builds"
+  ],
+  "main": "builds/rallymetrics.js",
   "devDependencies": {
     "grunt": "~0.4.2",
     "grunt-contrib-jshint": "~0.8.0",
