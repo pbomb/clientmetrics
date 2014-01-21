@@ -131,8 +131,8 @@
         },
 
         _removeImageFromDom: function() {
-            Util.removeEventHandler(this, 'load', this._removeImageFromDom);
-            Util.removeEventHandler(this, 'error', this._removeImageFromDom);
+            Util.removeEventHandler(this, 'load', this._imgCallback);
+            Util.removeEventHandler(this, 'error', this._imgCallback);
             Util.removeFromDom(this);
         },
 
@@ -152,8 +152,9 @@
             img.style.height = 0;
             img.style.display = 'none';
 
-            Util.addEventHandler(img, 'load', this._removeImageFromDom, false);
-            Util.addEventHandler(img, 'error', this._removeImageFromDom, false);
+            img._imgCallback = _.bind(this._removeImageFromDom, img);
+            Util.addEventHandler(img, 'load', img._imgCallback, false);
+            Util.addEventHandler(img, 'error', img._imgCallback, false);
 
             document.body.appendChild(img);
             img.src = url;
