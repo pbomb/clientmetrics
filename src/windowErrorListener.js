@@ -1,5 +1,6 @@
 (function() {
     var _ = require('underscore');
+    var Util = require('./util');
 
     var browserSupportsOnError = true;
     var errorTpl = _.template("<%= message %>, <%= filename %>:<%= lineNumber %>");
@@ -22,7 +23,7 @@
             this._originalWindowOnError = window.onerror;
             window.onerror = _.bind(this._windowOnError, this);
         } else {
-            window.addEventListener('error', _.bind(this._onUnhandledError, this));
+            Util.addEvent(window, 'error', _.bind(this._onUnhandledError, this), false);
         }
     };
 

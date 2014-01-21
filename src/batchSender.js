@@ -1,5 +1,6 @@
 (function() {
     var _ = require('underscore');
+    var Util = require('./util');
 
     // the min and max length, in characters, that an encoded event can be. Max is set to 2000 since IE can
     // only handle URLs of length ~2048
@@ -148,8 +149,9 @@
             img.style.width = 0;
             img.style.height = 0;
             img.style.display = 'none';
-            img.addEventListener('load', this._removeImageFromDom, false);
-            img.addEventListener('error', this._removeImageFromDom, false);
+
+            Util.addEvent(img, 'load', this._removeImageFromDom, false);
+            Util.addEvent(img, 'error', this._removeImageFromDom, false);
 
             document.body.appendChild(img);
             img.src = url;
