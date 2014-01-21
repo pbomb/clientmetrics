@@ -23,7 +23,7 @@
             this._originalWindowOnError = window.onerror;
             window.onerror = _.bind(this._windowOnError, this);
         } else {
-            Util.addEvent(window, 'error', _.bind(this._onUnhandledError, this), false);
+            Util.addEventHandler(window, 'error', _.bind(this._onUnhandledError, this), false);
         }
     };
 

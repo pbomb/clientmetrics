@@ -131,7 +131,9 @@
         },
 
         _removeImageFromDom: function() {
-            this.remove();
+            Util.removeEventHandler(this, 'load', this._removeImageFromDom);
+            Util.removeEventHandler(this, 'error', this._removeImageFromDom);
+            Util.removeFromDom(this);
         },
 
         _toQueryString: function(data) {
@@ -150,8 +152,8 @@
             img.style.height = 0;
             img.style.display = 'none';
 
-            Util.addEvent(img, 'load', this._removeImageFromDom, false);
-            Util.addEvent(img, 'error', this._removeImageFromDom, false);
+            Util.addEventHandler(img, 'load', this._removeImageFromDom, false);
+            Util.addEventHandler(img, 'error', this._removeImageFromDom, false);
 
             document.body.appendChild(img);
             img.src = url;
