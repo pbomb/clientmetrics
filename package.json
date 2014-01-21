@@ -1,6 +1,6 @@
 {
   "name": "rallymetrics",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Metrics aggregation for Rally Software",
   "main": "index.js",
   "scripts": {
@@ -15,6 +15,10 @@
     {
       "name": "Matt Parrish",
       "email": "matt.r.parrish@gmail.com"
+    },
+    {
+      "name": "Matt Greer",
+      "email": "matt.e.greer@gmail.com"
     }
   ],
   "license": "MIT",
