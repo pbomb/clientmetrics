@@ -54,7 +54,7 @@
      * @param {Object} [config.sender = BatchSender] Which sender to use. By default,
      *   a BatchSender will be used.
      * @param {Number} [config.flushInterval] If defined, events will be sent at least that often.
-     * @param {String} [config.beaconUrl = "https://trust.rallydev.com/beacon/"] URL where the beacon is located.
+     * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
      */
     var Aggregator = function(config) {
         _.extend(this, config);
