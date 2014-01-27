@@ -27,7 +27,7 @@
   },
   "files": [
     "builds",
-    "docs"
+    "doc"
   ],
   "devDependencies": {
     "grunt": "~0.4.2",
