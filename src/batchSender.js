@@ -26,14 +26,14 @@
      * @param {String[]} [config.keysToIgnore = []] Which properties on events should not be sent
      * @param {Number} [config.minLength = 1700] The minimum length of the generated URL that can be sent.
      * @param {Number} [config.maxLength = 2000] The maximum length of the generated URL that can be sent.
-     * @param {String} [config.beaconUrl = "https://trust.rallydev.com/beacon/"] URL where the beacon is located.
+     * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
      */
     var BatchSender = function(config) {
         _.defaults(this, config, {
             keysToIgnore: [],
             minLength: MIN_EVENT_LENGTH,
             maxLength: MAX_EVENT_LENGTH,
-            beaconUrl: "https://trust.rallydev.com/beacon/"
+            beaconUrl: "https://trust.f4tech.com/beacon/"
         });
         this._eventQueue = [];
     };

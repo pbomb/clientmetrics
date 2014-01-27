@@ -20,12 +20,13 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-text-replace'
   grunt.loadNpmTasks 'grunt-open'
   grunt.loadNpmTasks 'grunt-umd'
+  grunt.loadNpmTasks 'grunt-release'
 
   grunt.loadTasks 'grunt/tasks'
 
   grunt.registerTask 'default', ['clean', 'nexus:client:fetch', 'coffee:compile']
 
-  grunt.registerTask 'build', 'Fetches the deps and builds the package', ['nexus', 'browserify-object', 'browserify', 'umd', 'clean:browserify', 'uglify']
+  grunt.registerTask 'build', 'Fetches the deps and builds the package', ['nexus', 'browserify-object', 'browserify', 'umd', 'clean:browserify', 'uglify', 'jsdoc']
 
   grunt.registerTask 'ci', 'Runs everything: cleans, fetches dependencies, compiles, jshint, runs the tests, buids the SDK and deploys to nexus', ['clean', 'test:setup', 'webdriver_jasmine_runner:chrome', 'webdriver_jasmine_runner:firefox', 'nexus:deploy']
 
@@ -43,6 +44,8 @@ module.exports = (grunt) ->
   grunt.registerTask 'test:firefox', 'Sets up and runs the tests in Firefox', ['test:setup', 'webdriver_jasmine_runner:firefox']
   grunt.registerTask 'test:server', "Starts a Jasmine server at localhost:#{serverPort}, specify a different port with --port=<port>", ['express:server', 'express-keepalive']
   grunt.registerTask 'coffee:compile', 'Compiles all the CoffeeScript, cleaning the test output directory first', ['clean:test', 'coffee']
+
+  grunt.registerTask 'npm:publish', 'builds the package, bumps package.json, then publishes out to NPM', ['build', 'release']
 
   spec = (grunt.option('spec') || '*').replace(/(Spec|Test)$/, '')
   debug = grunt.option('verbose') || false
@@ -239,6 +242,15 @@ module.exports = (grunt) ->
         src: ['src/**/*.js']
         options:
           destination: 'doc'
+
+    release:
+      options:
+        # all of these are releases's defaults, listing them anyway to give an idea what's going on
+        bump: true
+        file: 'package.json'
+        push: true
+        commit: true
+        pushTags: true
 
   # Only recompile changed coffee files
   changedFiles = Object.create null
