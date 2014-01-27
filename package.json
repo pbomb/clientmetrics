@@ -1,8 +1,8 @@
 {
   "name": "rallymetrics",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Metrics aggregation for Rally Software",
-  "main": "index.js",
+  "main": "builds/rallymetrics.js",
   "scripts": {
     "test": "grunt test"
   },
@@ -28,7 +28,6 @@
   "files": [
     "builds"
   ],
-  "main": "builds/rallymetrics.js",
   "devDependencies": {
     "grunt": "~0.4.2",
     "grunt-contrib-jshint": "~0.8.0",
