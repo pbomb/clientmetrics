@@ -36,7 +36,6 @@ module.exports = (grunt) ->
   grunt.registerTask 'fetch', 'Fetches the dependencies from Nexus', ['clean:dependencies', 'nexus:client:fetch']
 
   grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'webdriver_jasmine_runner:appsdk']
-  grunt.registerTask 'test:fast', 'Just configs and runs the tests. Does not do any compiling. grunt && grunt watch should be running.', ['test:__buildjasmineconf__', 'express:inline', 'webdriver_jasmine_runner:appsdk']
   grunt.registerTask 'test:conf', 'Fetches the deps, compiles coffee and SASS files and builds the jasmine test HTML page.', ['build', 'coffee:compile', 'test:__buildjasmineconf__']
   grunt.registerTask 'test:__buildjasmineconf__', 'Internal task to build and alter the jasmine conf', ['jasmine:metrics:build', 'replace:jasmine']
   grunt.registerTask 'test:setup', 'Fetches dependencies, compiles coffee and SASS files, runs jshint and starts jasmine server', ['build', 'coffee:compile', 'jshint', 'test:__buildjasmineconf__', 'express:inline']

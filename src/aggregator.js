@@ -505,7 +505,17 @@
          * @private
          */
         _getRallyRequestId: function(response) {
-            return response && response.getResponseHeader && response.getResponseHeader('RallyRequestID');
+            if(response) {
+                if(_.isObject(response.responseHeaders)) {
+                    return response.responseHeaders.RallyRequestID;
+
+                } else if(_.isFunction(response.getResponseHeader)) {
+                    return response.getResponseHeader('RallyRequestID');
+                    
+                } else if(_.isObject(response.getResponseHeader)) {
+                    return response.getResponseHeader.RallyRequestID;
+                }
+            }
         },
 
         /**

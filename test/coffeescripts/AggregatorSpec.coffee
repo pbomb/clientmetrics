@@ -201,7 +201,7 @@ describe "RallyMetrics.Aggregator", ->
       @xhrFake.onCreate = (xhr) =>
         request = xhr
         xhr.setResponseHeaders
-          rallyrequestid: @rallyRequestId
+          RallyRequestID: @rallyRequestId
         xhr.setResponseBody 'textual healing'
 
       xhr = new XMLHttpRequest()
@@ -398,3 +398,36 @@ describe "RallyMetrics.Aggregator", ->
       
       actionEvent = @findActionEvent()
       expect(actionEvent.foo).toEqual "bar"
+
+  describe "#_getRallyRequestId", ->
+    it "should find the RallyRequestId on an object", ->
+      aggregator = @createAggregator()
+
+      response =
+        getResponseHeader:
+          RallyRequestID: "myrequestid"
+
+      expect(aggregator._getRallyRequestId(response)).toBe "myrequestid"
+
+    it "should find the RallyRequestId from a function", ->
+      aggregator = @createAggregator()
+
+      response =
+        getResponseHeader: @stub().returns("myrequestid")
+        
+      expect(aggregator._getRallyRequestId(response)).toBe "myrequestid"   
+      expect(response.getResponseHeader).toHaveBeenCalledWith("RallyRequestID")  
+
+    it "should not find a RallyRequestId if there is no getResponseHeader", ->
+      aggregator = @createAggregator()
+
+      response = {}
+        
+      expect(aggregator._getRallyRequestId(response)).toBeUndefined()
+
+    it "should not find a RallyRequestId if there getResponseHeader is something else", ->
+      aggregator = @createAggregator()
+
+      response = getResponseHeader: 123
+        
+      expect(aggregator._getRallyRequestId(response)).toBeUndefined()
