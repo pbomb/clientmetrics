@@ -343,6 +343,63 @@ describe "RallyMetrics.Aggregator", ->
       expect(loadEvent.eId).not.toEqual miscData.eId
       expect(loadEvent.foo).toEqual miscData.foo
 
+  describe "#endLoad", ->
+    it "should have first:true for a component's first load", ->
+      aggregator = @createAggregatorAndRecordAction()
+      panel = new Panel()
+
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+      
+      firstLoad = @sentEvents[1]
+      secondLoad = @sentEvents[2]
+
+      expect(firstLoad.first).toBe(true)
+      expect(secondLoad.first).toBe(false)
+
+    it "should have first:true for all component's first load", ->
+      aggregator = @createAggregatorAndRecordAction()
+      panel = new Panel()
+      panel2 = new Panel()
+
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+      @beginLoad(aggregator, panel2)
+      @endLoad(aggregator, panel2)
+      
+      firstLoad = @sentEvents[1]
+      secondLoad = @sentEvents[2]
+      thirdLoad = @sentEvents[3]
+
+      expect(firstLoad.first).toBe(true)
+      expect(secondLoad.first).toBe(false)
+      expect(thirdLoad.first).toBe(true)
+
+    it "should reset first after a new session", ->
+      aggregator = @createAggregatorAndRecordAction()
+      panel = new Panel()
+
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+
+      aggregator.startSession('navigation')
+      @beginLoad(aggregator, panel)
+      @endLoad(aggregator, panel)
+      
+      firstLoad = @sentEvents[1]
+      secondLoad = @sentEvents[2]
+      thirdLoad = @sentEvents[3]
+
+      expect(firstLoad.first).toBe(true)
+      expect(secondLoad.first).toBe(false)
+      expect(thirdLoad.first).toBe(true)
+
   describe '#recordError', ->
     it "sends an error event", ->
       aggregator = @createAggregator()

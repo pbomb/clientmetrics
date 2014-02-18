@@ -62,6 +62,7 @@
         this._pendingEvents = [];
         this._browserTabId = this._getUniqueId();
         this._startingTime = new Date().getTime();
+        this._loadedComponents = [];
 
         // keep track of how many errors we have reported on, so we
         // can stop after a while and not flood the beacon
@@ -106,13 +107,13 @@
             this._defaultParams = defaultParams;
 
             this._errorCount = 0;
+            this._loadedComponents = [];
         },
 
         /**
          * Handles the action client metrics message. Starts and completes a client metric event
          */
         recordAction: function(options) {
-
             var cmp = options.component;
             delete options.component;
             var eventId = this._getUniqueId();
@@ -231,8 +232,15 @@
 
             options.stop = this._getRelativeTime(options.stopTime || new Date().getTime());
 
+            var isFirstLoad = this._loadedComponents.indexOf(cmp) === -1;
+
+            if (isFirstLoad) {
+                this._loadedComponents.push(cmp);
+            }
+
             this._finishEvent(event, _.extend({
-                status: 'Ready'
+                status: 'Ready',
+                first: isFirstLoad
             }, options));
         },
 
