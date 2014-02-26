@@ -102,7 +102,7 @@
          * @param defaultParams Default parameters that are sent with each request
          */
         startSession: function(status, defaultParams) {
-            this._concludePendingEvents(status);
+            this._pendingEvents = [];
             this.sendAllRemainingEvents();
             this._defaultParams = defaultParams;
 
@@ -533,20 +533,6 @@
          */
         _findPendingEvent: function(eventId) {
             return _.find(this._pendingEvents, {eId: eventId});
-        },
-
-        /**
-         * Loops through each pending event and finishes the event
-         * @param status the event's status for each of the pending events
-         * @private
-         */
-        _concludePendingEvents: function(status) {
-            var pendingEvents = this._pendingEvents,
-                now = this._getRelativeTime(),
-                newEventData = {status: status, stop: now};
-            _.each(pendingEvents, function(event) {
-                this._finishEvent(event, newEventData);
-            }, this);
         }
     });
 
