@@ -77,6 +77,9 @@ module.exports = (grunt) ->
         tasks: ['coffee:tests']
         options:
           spawn: false
+      js:
+        files: 'src/**/*.js'
+        tasks: ['build']
 
     coffee:
       tests:
