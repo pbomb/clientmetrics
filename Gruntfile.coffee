@@ -14,7 +14,6 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-uglify'
   grunt.loadNpmTasks 'grunt-express'
   grunt.loadNpmTasks 'grunt-jsdoc'
-  grunt.loadNpmTasks 'grunt-nexus-artifact'
   grunt.loadNpmTasks 'grunt-regex-check'
   grunt.loadNpmTasks 'grunt-webdriver-jasmine-runner'
   grunt.loadNpmTasks 'grunt-text-replace'
@@ -24,16 +23,13 @@ module.exports = (grunt) ->
 
   grunt.loadTasks 'grunt/tasks'
 
-  grunt.registerTask 'default', ['clean', 'nexus:client:fetch', 'coffee:compile']
+  grunt.registerTask 'default', ['clean', 'coffee:compile']
 
-  grunt.registerTask 'build', 'Fetches the deps and builds the package', ['nexus', 'browserify-object', 'browserify', 'umd', 'clean:browserify', 'uglify', 'jsdoc']
+  grunt.registerTask 'build', 'Fetches the deps and builds the package', ['browserify-object', 'browserify', 'umd', 'clean:browserify', 'uglify', 'jsdoc']
 
-  grunt.registerTask 'ci', 'Runs everything: cleans, fetches dependencies, compiles, jshint, runs the tests, buids the SDK and deploys to nexus', ['clean', 'test:setup', 'webdriver_jasmine_runner:chrome', 'webdriver_jasmine_runner:firefox', 'nexus:deploy']
+  grunt.registerTask 'ci', 'Runs everything: cleans, fetches dependencies, compiles, jshint, runs the tests, buids the SDK', ['clean', 'test:setup', 'webdriver_jasmine_runner:chrome', 'webdriver_jasmine_runner:firefox']
 
   grunt.registerTask 'check', 'Run convention tests on all files', ['regex-check']
-
-  grunt.registerTask 'nexus:deploy', 'Cleans and builds the SDK and deploys to nexus', ['clean:build', 'build', 'jsdoc', 'nexus:client:publish']
-  grunt.registerTask 'fetch', 'Fetches the dependencies from Nexus', ['clean:dependencies', 'nexus:client:fetch']
 
   grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'webdriver_jasmine_runner:appsdk']
   grunt.registerTask 'test:conf', 'Fetches the deps, compiles coffee and SASS files and builds the jasmine test HTML page.', ['build', 'coffee:compile', 'test:__buildjasmineconf__']
@@ -149,7 +145,7 @@ module.exports = (grunt) ->
             "test/javascripts/helpers/**/*.js"
           ]
           vendor: [
-            "lib/lodash/lodash.compat.js"
+            "node_modules/lodash/dist/lodash.compat.js"
             "test/support/when.js"
             "builds/rallymetrics.js"
 
@@ -201,20 +197,6 @@ module.exports = (grunt) ->
         unused: 'vars'
         es3: true
         laxbreak: true
-
-    nexus:
-      options:
-        url: 'http://alm-build.f4tech.com:8080',
-        repository: 'thirdparty'
-      client:
-        files: [
-          { expand: true, cwd: '.', src: ['builds/**/*', 'src/**/*', 'doc/**/*'] }
-        ]
-        options:
-          fetch: grunt.file.readJSON('js_dependencies.json')
-          publish: [
-            { id: 'com.rallydev.js:rallymetrics:tgz', version: '<%= version %>', path: 'target/' }
-          ]
 
     "regex-check":
       consolelogs:
