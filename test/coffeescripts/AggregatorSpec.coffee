@@ -109,22 +109,6 @@ describe "RallyMetrics.Aggregator", ->
       
       expect(aggregator.sender.flush).toHaveBeenCalledOnce()
 
-    it "should conclude pending events", ->
-      aggregator = @createAggregatorAndRecordAction()
-
-      @sentEvents = []
-
-      @beginLoad aggregator
-      @beginLoad aggregator
-
-      expect(aggregator.sender.send).not.toHaveBeenCalled()
-
-      @startSession aggregator
-
-      expect(@sentEvents.length).toBe 2
-      for event in @sentEvents
-        expect(event.status).toBe "Navigation"
-  
     it "should append defaultParams to events", ->
       aggregator = @createAggregator()
 
