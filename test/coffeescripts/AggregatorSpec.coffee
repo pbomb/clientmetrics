@@ -109,22 +109,6 @@ describe "RallyMetrics.Aggregator", ->
       
       expect(aggregator.sender.flush).toHaveBeenCalledOnce()
 
-    it "should conclude pending events", ->
-      aggregator = @createAggregatorAndRecordAction()
-
-      @sentEvents = []
-
-      @beginLoad aggregator
-      @beginLoad aggregator
-
-      expect(aggregator.sender.send).not.toHaveBeenCalled()
-
-      @startSession aggregator
-
-      expect(@sentEvents.length).toBe 2
-      for event in @sentEvents
-        expect(event.status).toBe "Navigation"
-  
     it "should append defaultParams to events", ->
       aggregator = @createAggregator()
 
@@ -343,63 +327,6 @@ describe "RallyMetrics.Aggregator", ->
       expect(loadEvent.eId).not.toEqual miscData.eId
       expect(loadEvent.foo).toEqual miscData.foo
 
-  describe "#endLoad", ->
-    it "should have first:true for a component's first load", ->
-      aggregator = @createAggregatorAndRecordAction()
-      panel = new Panel()
-
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-      
-      firstLoad = @sentEvents[1]
-      secondLoad = @sentEvents[2]
-
-      expect(firstLoad.first).toBe(true)
-      expect(secondLoad.first).toBe(false)
-
-    it "should have first:true for all component's first load", ->
-      aggregator = @createAggregatorAndRecordAction()
-      panel = new Panel()
-      panel2 = new Panel()
-
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-      @beginLoad(aggregator, panel2)
-      @endLoad(aggregator, panel2)
-      
-      firstLoad = @sentEvents[1]
-      secondLoad = @sentEvents[2]
-      thirdLoad = @sentEvents[3]
-
-      expect(firstLoad.first).toBe(true)
-      expect(secondLoad.first).toBe(false)
-      expect(thirdLoad.first).toBe(true)
-
-    it "should reset first after a new session", ->
-      aggregator = @createAggregatorAndRecordAction()
-      panel = new Panel()
-
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-
-      aggregator.startSession('navigation')
-      @beginLoad(aggregator, panel)
-      @endLoad(aggregator, panel)
-      
-      firstLoad = @sentEvents[1]
-      secondLoad = @sentEvents[2]
-      thirdLoad = @sentEvents[3]
-
-      expect(firstLoad.first).toBe(true)
-      expect(secondLoad.first).toBe(false)
-      expect(thirdLoad.first).toBe(true)
-
   describe '#recordError', ->
     it "sends an error event", ->
       aggregator = @createAggregator()
@@ -446,6 +373,83 @@ describe "RallyMetrics.Aggregator", ->
       expect(@sentEvents.length).toBe 2
       errorEvent = @sentEvents[1]
       expect(errorEvent.error.length).toBeLessThan 2000
+
+  describe "#recordComponentReady", ->
+    beforeEach ->
+      @aggregator = @createAggregator()
+      @panel = new Panel()
+
+    it "should not record a component ready if there is no session", ->
+      @aggregator.recordComponentReady(component: @panel)
+      expect(@sentEvents.length).toBe 0
+
+    it "should record component ready even if there is not a current trace", ->
+      @startSession(@aggregator)
+      @aggregator.recordComponentReady(component: @panel)
+      expect(@sentEvents.length).toBe 1
+      expect(@sentEvents[0].tId).toBeUndefined()
+      expect(@sentEvents[0].componentReady).toBe true
+
+    it "should record the traceId if one is present", ->
+      @startSession(@aggregator)
+      @recordAction(@aggregator, @panel)
+      @aggregator.recordComponentReady(component: @panel)
+      expect(@sentEvents.length).toBe 2
+
+      actionEvent = @sentEvents[0]
+      componentReadyEvent = @sentEvents[1]
+
+      expect(actionEvent.tId).toEqual actionEvent.eId
+      expect(componentReadyEvent.tId).toEqual actionEvent.eId
+      expect(componentReadyEvent.componentReady).toBe true
+
+    it "should record a start time equal to the session start time", ->
+      @startSession(@aggregator)
+
+      @aggregator.recordComponentReady(component: @panel)
+
+      expect(@sentEvents.length).toBe 1
+      componentReadyEvent = @sentEvents[0]
+
+      expect(componentReadyEvent.start).toBeANumber()
+      expect(componentReadyEvent.start).toEqual(@aggregator._sessionStartTime)
+      expect(componentReadyEvent.stop).toBeANumber()
+      expect(componentReadyEvent.componentReady).toBe true
+
+    it "should record a component as ready only once per session", ->
+      @startSession(@aggregator)
+
+      @aggregator.recordComponentReady(component: @panel)
+      @aggregator.recordComponentReady(component: @panel)
+
+      expect(@sentEvents.length).toBe 1
+      expect(@sentEvents[0].eType).toBe "load"
+      expect(@sentEvents[0].componentReady).toBe true
+
+    it "should ignore a second component's ready if it has the same hierarchy as the previous component", ->
+      @startSession(@aggregator)
+
+      @aggregator.recordComponentReady(component: @panel)
+      @aggregator.recordComponentReady(component: new Panel())
+
+      expect(@sentEvents.length).toBe 1
+      expect(@sentEvents[0].eType).toBe "load"
+      expect(@sentEvents[0].componentReady).toBe true
+
+    it "should record a component as ready a second time if a new session started", ->
+      @startSession(@aggregator)
+
+      @aggregator.recordComponentReady(component: @panel)
+      @aggregator.recordComponentReady(component: @panel)
+
+      @startSession(@aggregator)
+      @aggregator.recordComponentReady(component: @panel)
+
+      expect(@sentEvents.length).toBe 2
+      expect(@sentEvents[0].eType).toBe "load"
+      expect(@sentEvents[1].eType).toBe "load"
+      expect(@sentEvents[0].componentReady).toBe true
+      expect(@sentEvents[1].componentReady).toBe true
 
   describe 'additional parameters', ->
     it "should append guiTestParams to events", ->

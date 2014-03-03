@@ -103,6 +103,7 @@
          */
         startSession: function(status, defaultParams) {
             this._pendingEvents = [];
+            this._sessionStartTime = this._getRelativeTime();
             this.sendAllRemainingEvents();
             this._defaultParams = defaultParams;
 
@@ -165,6 +166,36 @@
                 // dont want errors to get left behind in the batch, force it to be sent now
                 this.sendAllRemainingEvents();
             }
+        },
+
+        recordComponentReady: function(options){
+            if(_.isUndefined(this._sessionStartTime)) {
+                return;
+            }
+
+            var cmp = options.component,
+                cmpHierarchy = this._getHierarchyString(cmp);
+
+            var seenThisComponentAlready = this._loadedComponents.indexOf(cmpHierarchy) > -1;
+
+            if(seenThisComponentAlready) {
+                return;
+            }
+
+            this._loadedComponents.push(cmpHierarchy);
+
+            var cmpReadyEvent = this._startEvent(_.defaults({
+                eType: 'load',
+                start: this._sessionStartTime,
+                eId: this._getUniqueId(),
+                tId: this._currentUserActionEventId,
+                cmpType: this.getComponentType(cmp),
+                cmpH: cmpHierarchy,
+                eDesc: 'component ready',
+                componentReady: true
+            }, options.miscData));
+
+            this._finishEvent(cmpReadyEvent);
         },
 
         /**
@@ -232,15 +263,8 @@
 
             options.stop = this._getRelativeTime(options.stopTime || new Date().getTime());
 
-            var isFirstLoad = this._loadedComponents.indexOf(cmp) === -1;
-
-            if (isFirstLoad) {
-                this._loadedComponents.push(cmp);
-            }
-
             this._finishEvent(event, _.extend({
-                status: 'Ready',
-                first: isFirstLoad
+                status: 'Ready'
             }, options));
         },
 
