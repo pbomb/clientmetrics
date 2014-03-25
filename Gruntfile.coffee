@@ -226,6 +226,7 @@ module.exports = (grunt) ->
         src: ['src/**/*.js']
         options:
           destination: 'doc'
+          private: false
 
     release:
       options:
