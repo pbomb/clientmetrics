@@ -9,7 +9,7 @@ describe 'RallyMetrics.Util', ->
       it 'should call addEventListener', ->
         callback = ->
         RallyMetrics.Util.addEventHandler @target, 'foo', callback, false
-        expect(@target.addEventListener).toHaveBeenCalledWith 'foo', callback, false
+        expect(@target.addEventListener).to.have.been.calledWith 'foo', callback, false
 
     describe 'with attachEvent', ->
       beforeEach ->
@@ -19,7 +19,7 @@ describe 'RallyMetrics.Util', ->
       it 'should call attachEvent', ->
         callback = ->
         RallyMetrics.Util.addEventHandler @target, 'foo', callback, false
-        expect(@target.attachEvent).toHaveBeenCalledWith 'onfoo', callback      
+        expect(@target.attachEvent).to.have.been.calledWith 'onfoo', callback      
 
   describe '#removeEventHandler', ->
     describe 'with removeEventListener', ->
@@ -30,7 +30,7 @@ describe 'RallyMetrics.Util', ->
       it 'should call removeEventListener', ->
         callback = ->
         RallyMetrics.Util.removeEventHandler @target, 'foo', callback
-        expect(@target.removeEventListener).toHaveBeenCalledWith 'foo', callback
+        expect(@target.removeEventListener).to.have.been.calledWith 'foo', callback
 
     describe 'with detachEvent', ->
       beforeEach ->
@@ -40,7 +40,7 @@ describe 'RallyMetrics.Util', ->
       it 'should call detachEvent', ->
         callback = ->
         RallyMetrics.Util.removeEventHandler @target, 'foo', callback
-        expect(@target.detachEvent).toHaveBeenCalledWith 'onfoo', callback      
+        expect(@target.detachEvent).to.have.been.calledWith 'onfoo', callback      
 
   describe '#removeFromDom', ->
     describe 'when element has remove()', ->
@@ -50,7 +50,7 @@ describe 'RallyMetrics.Util', ->
 
       it 'should call remove()', ->
         RallyMetrics.Util.removeFromDom(@element)
-        expect(@element.remove).toHaveBeenCalled()
+        expect(@element.remove).to.have.been.called
 
     describe 'when element does not have remove()', ->
       beforeEach ->
@@ -60,4 +60,4 @@ describe 'RallyMetrics.Util', ->
 
       it 'should remove via the parent', ->
         RallyMetrics.Util.removeFromDom(@element)
-        expect(@element.parentNode.removeChild).toHaveBeenCalledWith @element
+        expect(@element.parentNode.removeChild).to.have.been.calledWith @element

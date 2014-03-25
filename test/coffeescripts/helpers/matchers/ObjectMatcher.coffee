@@ -1,7 +1,7 @@
 notText = (matcher) -> if matcher.isNot then " not" else ""
 
 beforeEach ->
-  @addMatchers
+  _.each
     toHaveOwnProperty: (property) ->
       @message = ->
         ownProperties = _.keys(@actual)
@@ -23,4 +23,5 @@ beforeEach ->
     toBeWithin: (lower, upper) ->
       @message = -> "Expected #{@actual}#{notText(this)} to be within #{lower} and #{upper}"
       lower <= @actual && upper >= @actual
-      
+  , (fn, name) ->
+    chai.Assertion.addMethod name, fn

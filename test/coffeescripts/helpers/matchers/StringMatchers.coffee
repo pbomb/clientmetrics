@@ -1,5 +1,5 @@
 beforeEach ->
-  @addMatchers
+  _.each
     toStartWith: (text) ->
       notText = if @isNot then " not" else ""
       @message = ->
@@ -11,3 +11,5 @@ beforeEach ->
       @message = ->
         "Expected #{@actual} to#{notText} end with #{text}"
       @actual.indexOf(text, @actual.length - text.length) != -1
+  , (fn, name) ->
+    chai.Assertion.addMethod name, fn

@@ -27,9 +27,9 @@ describe "RallyMetrics.BatchSender", ->
         sender.send data
   
         img = document.body.appendChild.args[0][0]
-        expect(img.src).toContain "foo.0=bar"
-        expect(img.src).not.toContain "#{aKeyToIgnore}.0"
-        expect(img.src).not.toContain "#{anotherKeyToIgnore}.0"
+        expect(img.src).to.have.string "foo.0=bar"
+        expect(img.src).not.to.have.string "#{aKeyToIgnore}.0"
+        expect(img.src).not.to.have.string "#{anotherKeyToIgnore}.0"
 
   describe '#send', ->
     it "should append indices to the keys so they don't get clobbered", ->
@@ -40,7 +40,7 @@ describe "RallyMetrics.BatchSender", ->
 
       img = document.body.appendChild.args[0][0]
       for d, i in data
-        expect(img.src).toContain "foo.#{i}=#{i}"
+        expect(img.src).to.have.string "foo.#{i}=#{i}"
 
     it "should not send a batch if the url length is shorter than the configured min length", ->
       sender = @createSender
@@ -49,8 +49,8 @@ describe "RallyMetrics.BatchSender", ->
       data = @getData(2)
 
       sender.send datum for datum in data
-      expect(sender.getPendingEvents()).toEqual data
-      expect(document.body.appendChild).not.toHaveBeenCalled()
+      expect(sender.getPendingEvents()).to.eql data
+      expect(document.body.appendChild).not.to.have.been.called
   
     it "should not send a batch that contains one event that is too big", ->
       sender = @createSender
@@ -65,8 +65,8 @@ describe "RallyMetrics.BatchSender", ->
 
       sender.send data
 
-      expect(sender.getPendingEvents()).toEqual [data]
-      expect(document.body.appendChild).not.toHaveBeenCalled()
+      expect(sender.getPendingEvents()).to.eql [data]
+      expect(document.body.appendChild).not.to.have.been.called
       
     it "should send to the configured url", ->
       clientMetricsUrl = "http://localhost/testing"
@@ -77,7 +77,7 @@ describe "RallyMetrics.BatchSender", ->
       sender.send datum for datum in data
   
       img = document.body.appendChild.args[0][0]
-      expect(img.src).toBe "#{clientMetricsUrl}?foo.0=0&foo.1=1"
+      expect(img.src).to.equal "#{clientMetricsUrl}?foo.0=0&foo.1=1"
 
   describe '#flush', ->
 
@@ -91,14 +91,14 @@ describe "RallyMetrics.BatchSender", ->
       data = @getData(2)
 
       sender.send datum for datum in data
-      expect(sender.getPendingEvents()).toEqual data
-      expect(document.body.appendChild).not.toHaveBeenCalled()
+      expect(sender.getPendingEvents()).to.eql data
+      expect(document.body.appendChild).not.to.have.been.called
 
       sender.flush()
 
-      expect(sender.getPendingEvents().length).toBe 0
-      expect(document.body.appendChild).toHaveBeenCalledOnce()
+      expect(sender.getPendingEvents().length).to.equal 0
+      expect(document.body.appendChild).to.have.been.calledOnce
       img = document.body.appendChild.args[0][0]
-      expect(img.src).toBe "#{clientMetricsUrl}?foo.0=0&foo.1=1"
+      expect(img.src).to.equal "#{clientMetricsUrl}?foo.0=0&foo.1=1"
 
       
