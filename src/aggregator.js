@@ -451,7 +451,7 @@ Aggregator.prototype._findParentId = function(sourceCmp, traceId) {
     var eventId = traceId;
 
     _.each(hierarchy, function(cmp) {
-        parentEvent = _.findLast(this._pendingEvents, function(event) {
+        var parentEvent = _.findLast(this._pendingEvents, function(event) {
             return event.eType !== 'dataRequest' && (event.cmp === cmp || event.cmp === sourceCmp) && event.tId === traceId;
         });
         if (parentEvent) {

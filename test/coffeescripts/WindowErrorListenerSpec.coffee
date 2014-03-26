@@ -5,6 +5,7 @@ describe 'RallyMetrics.WindowErrorListener', ->
 
   beforeEach ->
     @originalOnError = window.onerror
+    window.onerror = null
     @aggregator =
       recordError: @stub()
 
@@ -20,7 +21,7 @@ describe 'RallyMetrics.WindowErrorListener', ->
 
     window.onerror(message, file, lineNum)
 
-    expect(@aggregator.recordError).toHaveBeenCalledWith "#{message}, #{file}:#{lineNum}"
+    expect(@aggregator.recordError).to.have.been.calledWith "#{message}, #{file}:#{lineNum}"
 
   it 'should gracefully deal with no error message, file and line number', ->
     @createListener()
@@ -28,8 +29,8 @@ describe 'RallyMetrics.WindowErrorListener', ->
     window.onerror(undefined, undefined, undefined)
 
     errorInfo = @aggregator.recordError.args[0][0]
-    expect(errorInfo).not.toContain('undefined')
-    expect(errorInfo).toContain('?')
+    expect(errorInfo).not.to.have.string('undefined')
+    expect(errorInfo).to.have.string('?')
 
   it 'should not hook into onerror if not supported', ->
     dummyOnError = @spy()
@@ -37,7 +38,7 @@ describe 'RallyMetrics.WindowErrorListener', ->
     window.onerror = dummyOnError
 
     @createListener(false)
-    expect(window.onerror).toBe dummyOnError
+    expect(window.onerror).to.equal dummyOnError
 
   it 'should maintain the existing window.onerror', ->
     existingOnError = @spy()
@@ -46,5 +47,5 @@ describe 'RallyMetrics.WindowErrorListener', ->
     @createListener()
     window.onerror('uhoh', 'foo.js', 12)
 
-    expect(@aggregator.recordError).toHaveBeenCalledWith('uhoh, foo.js:12')
-    expect(existingOnError).toHaveBeenCalledWith('uhoh', 'foo.js', 12)
+    expect(@aggregator.recordError).to.have.been.calledWith('uhoh, foo.js:12')
+    expect(existingOnError).to.have.been.calledWith('uhoh', 'foo.js', 12)

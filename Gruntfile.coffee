@@ -1,4 +1,6 @@
 path = require 'path'
+_ = require 'lodash'
+
 module.exports = (grunt) ->
 
   serverPort = grunt.option('port') || 8894
@@ -8,14 +10,13 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-browserify'
   grunt.loadNpmTasks 'grunt-contrib-coffee'
   grunt.loadNpmTasks 'grunt-contrib-clean'
-  grunt.loadNpmTasks 'grunt-contrib-jasmine'
   grunt.loadNpmTasks 'grunt-contrib-jshint'
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-contrib-uglify'
   grunt.loadNpmTasks 'grunt-express'
   grunt.loadNpmTasks 'grunt-jsdoc'
+  grunt.loadNpmTasks 'grunt-mocha'
   grunt.loadNpmTasks 'grunt-regex-check'
-  grunt.loadNpmTasks 'grunt-webdriver-jasmine-runner'
   grunt.loadNpmTasks 'grunt-text-replace'
   grunt.loadNpmTasks 'grunt-open'
   grunt.loadNpmTasks 'grunt-umd'
@@ -23,21 +24,18 @@ module.exports = (grunt) ->
 
   grunt.loadTasks 'grunt/tasks'
 
-  grunt.registerTask 'default', ['clean', 'coffee:compile']
+  grunt.registerTask 'default', ['clean', 'build', 'jshint', 'coffee:compile']
 
   grunt.registerTask 'build', 'Fetches the deps and builds the package', ['browserify-object', 'browserify', 'umd', 'clean:browserify', 'uglify', 'jsdoc']
 
-  grunt.registerTask 'ci', 'Runs everything: cleans, fetches dependencies, compiles, jshint, runs the tests, buids the SDK', ['clean', 'test:setup', 'webdriver_jasmine_runner:chrome', 'webdriver_jasmine_runner:firefox']
+  grunt.registerTask 'ci', 'Runs everything: cleans, fetches dependencies, compiles, jshint, runs the tests, buids the SDK', ['clean', 'test:setup', 'mocha']
 
   grunt.registerTask 'check', 'Run convention tests on all files', ['regex-check']
 
-  grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'webdriver_jasmine_runner:appsdk']
-  grunt.registerTask 'test:conf', 'Fetches the deps, compiles coffee and SASS files and builds the jasmine test HTML page.', ['build', 'coffee:compile', 'test:__buildjasmineconf__']
-  grunt.registerTask 'test:__buildjasmineconf__', 'Internal task to build and alter the jasmine conf', ['jasmine:metrics:build', 'replace:jasmine']
-  grunt.registerTask 'test:setup', 'Fetches dependencies, compiles coffee and SASS files, runs jshint and starts jasmine server', ['build', 'coffee:compile', 'jshint', 'test:__buildjasmineconf__', 'express:inline']
-  grunt.registerTask 'test:chrome', 'Sets up and runs the tests in Chrome', ['test:setup', 'webdriver_jasmine_runner:chrome']
-  grunt.registerTask 'test:firefox', 'Sets up and runs the tests in Firefox', ['test:setup', 'webdriver_jasmine_runner:firefox']
-  grunt.registerTask 'test:server', "Starts a Jasmine server at localhost:#{serverPort}, specify a different port with --port=<port>", ['express:server', 'express-keepalive']
+  grunt.registerTask 'test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'mocha']
+  grunt.registerTask 'test:conf', 'Fetches the deps, compiles coffee and SASS files and builds the test HTML page.', ['default', 'replace:testPage']
+  grunt.registerTask 'test:setup', 'Fetches dependencies, compiles coffee and SASS files, runs jshint and starts test server', ['test:conf', 'express:inline']
+  grunt.registerTask 'test:server', "Starts a test server at localhost:#{serverPort}, specify a different port with --port=<port>", ['express:server', 'express-keepalive']
   grunt.registerTask 'coffee:compile', 'Compiles all the CoffeeScript, cleaning the test output directory first', ['clean:test', 'coffee']
 
   grunt.registerTask 'npm:publish', 'builds the package, bumps package.json, then publishes out to NPM', ['build', 'release']
@@ -47,7 +45,7 @@ module.exports = (grunt) ->
   version = grunt.option('version') || '0.1.0'
 
   srcFiles = "src/**/*.js"
-  specFiles = "test/javascripts/**/*Spec.js"
+  specFiles = grunt.file.expand ['test/**/*Spec.js']
 
   buildDir = "builds"
 
@@ -138,47 +136,14 @@ module.exports = (grunt) ->
           ]
           port: docsPort
 
-    jasmine:
-      metrics:
-        options:
-          specs: [
-            "test/javascripts/**/#{spec}Spec.js"
-          ]
-          helpers: [
-            "test/javascripts/helpers/**/*.js"
-          ]
-          vendor: [
-            "node_modules/lodash/dist/lodash.compat.js"
-            "test/support/when.js"
-            "builds/rallymetrics.js"
-
-            # 3rd party libraries & customizations
-            "test/support/sinon/sinon-1.7.3.js"
-            "test/support/sinon/jasmine-sinon.js"
-            "test/support/sinon/rally-sinon-config.js"
-
-            # Mocks and helpers
-
-            # Jasmine overrides
-            "test/support/jasmine/jasmine-html-overrides.js"
-          ]
-          styles: [
-            "test/support/jasmine/rally-jasmine.css"
-          ]
-          host: "http://127.0.0.1:#{inlinePort}/"
-
-
-    webdriver_jasmine_runner:
+    mocha:
       options:
-        seleniumServerArgs: ['-Xmx256M']
-        testServerPort: inlinePort
-      appsdk: {}
-      chrome:
-        options:
-          browser: "chrome"
-      firefox:
-        options:
-          browser: "firefox"
+        log: true
+        urls: ["http://localhost:#{inlinePort}/testpage.html"]
+        logErrors: true
+        run: false
+      client:
+        reporter: 'tap'
 
     jshint:
       files: [
@@ -208,13 +173,20 @@ module.exports = (grunt) ->
           pattern: /console\.log/g
 
     replace:
-      jasmine:
-        src: ['_SpecRunner.html']
-        overwrite: true
-        replacements: [
-          from: '<script src=".grunt/grunt-contrib-jasmine/reporter.js"></script>'
-          to: '<!--script src=".grunt/grunt-contrib-jasmine/reporter.js"></script> removed because its slow and not used-->'
-        ]
+      testPage:
+        replacements: [{
+          from: '__helperFiles__'
+          to: _.map(grunt.file.expand(["test/javascripts/helpers/**/*.js"]), (file) ->
+            "<script src=\"#{file}\"></script>"
+          ).join('\n  ')
+        }, {
+          from: '__specFiles__'
+          to: _.map(specFiles, (file) ->
+            "<script src=\"#{file}\"></script>"
+          ).join('\n  ')
+        }]
+        src: ['test/testpage.tpl']
+        dest: 'test/testpage.html'
 
     uglify:
       js:
