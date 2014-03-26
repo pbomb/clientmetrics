@@ -38,6 +38,7 @@ sinonSandboxSetUp = (spec) ->
   return if spec.__sandbox__
   config = sinon.getConfig(sinon.config)
   config.injectInto = config.injectIntoThis && spec || config.injectInto
+  config.useFakeTimers = false
   spec.__sandbox__ = sinon.sandbox.create(config)
 
 sinonSandboxTearDown = (spec) ->

@@ -80,7 +80,7 @@ describe "RallyMetrics.Aggregator", ->
     afterEach ->
       @aggregator?.destroy()
       
-    it 'should flush on the specified interval', ->
+    it 'should flush on the specified interval', (done) ->
       @aggregator = @createAggregator
         flushInterval: 10
 
@@ -89,9 +89,10 @@ describe "RallyMetrics.Aggregator", ->
       once(
         condition: => @aggregator.sender.flush.callCount > 2
         description: 'waiting for flush to happen more than twice'
-      ).then ->
+      ).done ->
         stop = new Date().getTime()
         expect(stop - start).to.be.greaterThan 20
+        done()
       
   describe '#startSession', ->
     it "should start a new session", ->
