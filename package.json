@@ -1,6 +1,6 @@
 {
   "name": "rallymetrics",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Metrics aggregation for Rally Software",
   "main": "builds/rallymetrics.js",
   "scripts": {
