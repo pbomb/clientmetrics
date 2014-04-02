@@ -183,6 +183,7 @@ Aggregator.prototype.recordComponentReady = function(options) {
         start: this._sessionStartTime,
         eId: this._getUniqueId(),
         tId: this._currentUserActionEventId,
+        pId: this._currentUserActionEventId,
         cmpType: this.getComponentType(cmp),
         cmpH: cmpHierarchy,
         eDesc: 'component ready',

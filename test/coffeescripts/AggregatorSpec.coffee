@@ -398,6 +398,7 @@ describe "RallyMetrics.Aggregator", ->
 
       expect(actionEvent.tId).to.equal actionEvent.eId
       expect(componentReadyEvent.tId).to.equal actionEvent.eId
+      expect(componentReadyEvent.pId).to.equal actionEvent.eId
       expect(componentReadyEvent.componentReady).to.equal true
 
     it "should record a start time equal to the session start time", ->
