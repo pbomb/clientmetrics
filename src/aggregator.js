@@ -1,5 +1,6 @@
 var _ = require('underscore');
 var BatchSender = require('./batchSender');
+var uuid = require('node-uuid');
 
 // The default for max number of errors we will send per session.
 // In ALM, a session is started for each page visit.
@@ -350,16 +351,9 @@ Aggregator.prototype.getComponentType = function(cmp) {
  * Creates a version 4 UUID
  * @private
  */
-/* jshint -W016 */
-/* jshint -W116 */
 Aggregator.prototype._getUniqueId = function() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-        return v.toString(16);
-    });
+    return uuid.v4();
 };
-/* jshint +W016 */
-/* jshint +W116 */
 
 /**
  * Gets the current timestamp relative to the starting time

@@ -9,6 +9,7 @@ module.exports = (grunt) ->
 
   grunt.loadNpmTasks 'grunt-browserify'
   grunt.loadNpmTasks 'grunt-contrib-coffee'
+  grunt.loadNpmTasks 'grunt-contrib-concat'
   grunt.loadNpmTasks 'grunt-contrib-clean'
   grunt.loadNpmTasks 'grunt-contrib-jshint'
   grunt.loadNpmTasks 'grunt-contrib-watch'
@@ -26,7 +27,7 @@ module.exports = (grunt) ->
 
   grunt.registerTask 'default', ['clean', 'build', 'jshint', 'coffee:compile']
 
-  grunt.registerTask 'build', 'Fetches the deps and builds the package', ['browserify-object', 'browserify', 'umd', 'clean:browserify', 'uglify', 'jsdoc']
+  grunt.registerTask 'build', 'Fetches the deps and builds the package', ['browserify-object', 'browserify', 'umd', 'clean:browserify', 'concat', 'uglify', 'jsdoc']
 
   grunt.registerTask 'ci', 'Runs everything: cleans, fetches dependencies, compiles, jshint, runs the tests, buids the SDK', ['clean', 'test:setup', 'mocha']
 
@@ -92,7 +93,7 @@ module.exports = (grunt) ->
         src: ['src/main.js'],
         dest: 'bundle.js',
         options:
-          external: [ 'underscore' ],
+          external: [ 'underscore', 'node-uuid:uuid' ],
           alias: ['src/main.js:RallyMetrics']
 
     'browserify-object':
@@ -187,6 +188,11 @@ module.exports = (grunt) ->
         }]
         src: ['test/testpage.tpl']
         dest: 'test/testpage.html'
+
+    concat:
+        dist:
+          src: ['node_modules/node-uuid/uuid.js', 'builds/rallymetrics.js']
+          dest: 'builds/rallymetrics.js'
 
     uglify:
       js:

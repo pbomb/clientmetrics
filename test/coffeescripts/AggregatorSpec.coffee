@@ -210,6 +210,13 @@ describe "RallyMetrics.Aggregator", ->
       @actionEvent = @sentEvents[0]
       @loadEvent = @sentEvents[1]
       @browserTabId = aggregator._browserTabId
+
+    it "should generate uuids for the event id and trace id", ->
+      uuidFormat = /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}/
+      expect(@loadEvent.tId).to.match(uuidFormat)
+      expect(@loadEvent.eId).to.match(uuidFormat)
+      expect(@loadEvent.pId).to.match(uuidFormat)
+      expect(@loadEvent.tabId).to.match(uuidFormat)
       
     it "should have trace id and event id for the action event", ->
       expect(@actionEvent.tId).to.be.a('string')
