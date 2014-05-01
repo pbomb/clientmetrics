@@ -46,7 +46,7 @@ module.exports = (grunt) ->
   version = grunt.option('version') || '0.1.0'
 
   srcFiles = "src/**/*.js"
-  specFiles = grunt.file.expand ['test/**/*Spec.js']
+  specFiles = -> grunt.file.expand ['test/**/*Spec.js']
 
   buildDir = "builds"
 
@@ -169,7 +169,7 @@ module.exports = (grunt) ->
 
     "regex-check":
       consolelogs:
-        src: [srcFiles, specFiles]
+        src: [srcFiles, specFiles()]
         options:
           pattern: /console\.log/g
 
@@ -177,14 +177,16 @@ module.exports = (grunt) ->
       testPage:
         replacements: [{
           from: '__helperFiles__'
-          to: _.map(grunt.file.expand(["test/javascripts/helpers/**/*.js"]), (file) ->
-            "<script src=\"#{file}\"></script>"
-          ).join('\n  ')
+          to: ->
+            _.map(grunt.file.expand(["test/javascripts/helpers/**/*.js"]), (file) ->
+              "<script src=\"#{file}\"></script>"
+            ).join('\n  ')
         }, {
           from: '__specFiles__'
-          to: _.map(specFiles, (file) ->
-            "<script src=\"#{file}\"></script>"
-          ).join('\n  ')
+          to: ->
+            _.map(specFiles(), (file) ->
+              "<script src=\"#{file}\"></script>"
+            ).join('\n  ')
         }]
         src: ['test/testpage.tpl']
         dest: 'test/testpage.html'
