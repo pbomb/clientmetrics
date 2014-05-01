@@ -497,3 +497,41 @@ describe "RallyMetrics.Aggregator", ->
       response = getResponseHeader: 123
         
       expect(aggregator._getRallyRequestId(response)).to.be.undefined
+
+  describe 'whenLongerThan parameter', ->
+    it "should not send the event if the duration is not longer than the 'whenLongerThan' parameter value", ->
+      aggregator = @createAggregatorAndRecordAction()
+      @sentEvents = []
+      startTime = 50
+      cmp = new Panel()
+
+      aggregator.beginLoad
+        component: cmp,
+        description: "a load",
+        startTime: startTime
+
+      aggregator.endLoad 
+        component: cmp,
+        stopTime: startTime + 1000
+        whenLongerThan: 1000
+
+      expect(@sentEvents.length).to.equal 0
+
+    it "should send the event if the duration is longer than the 'whenLongerThan' parameter value", ->
+      aggregator = @createAggregatorAndRecordAction()
+      @sentEvents = []
+      startTime = 50
+      cmp = new Panel()
+
+      aggregator.beginLoad
+        component: cmp,
+        description: "a load",
+        startTime: startTime
+
+      aggregator.endLoad 
+        component: cmp,
+        stopTime: startTime + 1001
+        whenLongerThan: 1000
+
+      expect(@sentEvents.length).to.equal 1
+

@@ -113,7 +113,7 @@ Aggregator.prototype.recordAction = function(options) {
     var cmp = options.component;
     delete options.component;
     var eventId = this._getUniqueId();
-    var startTime = this._getRelativeTime(options.startTime || new Date().getTime());
+    var startTime = this._getRelativeTime(options.startTime);
 
     var action = this._startEvent(_.defaults({
         eType: 'action',
@@ -125,14 +125,13 @@ Aggregator.prototype.recordAction = function(options) {
         tId: eventId,
         status: 'Ready',
         cmpType: this.getComponentType(cmp),
-        start: startTime
+        start: startTime,
+        stop: startTime
     }, options.miscData));
 
     this._currentUserActionEventId = action.eId;
 
-    this._finishEvent(action, {
-        stop: startTime
-    });
+    this._finishEvent(action);
 };
 
 Aggregator.prototype.recordError = function(errorInfo) {
@@ -151,12 +150,11 @@ Aggregator.prototype.recordError = function(errorInfo) {
             error: errorMsg,
             eId: this._getUniqueId(),
             tId: this._currentUserActionEventId,
-            start: startTime
-        });
-
-        this._finishEvent(errorEvent, {
+            start: startTime,
             stop: startTime
         });
+
+        this._finishEvent(errorEvent);
 
         // dont want errors to get left behind in the batch, force it to be sent now
         this.sendAllRemainingEvents();
@@ -182,6 +180,7 @@ Aggregator.prototype.recordComponentReady = function(options) {
     var cmpReadyEvent = this._startEvent(_.defaults({
         eType: 'load',
         start: this._sessionStartTime,
+        stop: this._getRelativeTime(options.stopTime),
         eId: this._getUniqueId(),
         tId: this._currentUserActionEventId,
         pId: this._currentUserActionEventId,
@@ -196,10 +195,14 @@ Aggregator.prototype.recordComponentReady = function(options) {
 
 /**
  * Handles the beginLoad client metrics message. Starts an event
+ * @param {Object} options Information to add to the event
+ * @param {Object} options.component The component recording the event
+ * @param {Number} [options.startTime = new Date().getTime()] The start time of the event
+ * @param {String} options.description The description of the load
+ * @param {Object} [options.miscData] Any other data that should be recorded with the event
  */
 Aggregator.prototype.beginLoad = function(options) {
     var cmp = options.component;
-    delete options.component;
     if (!this._currentUserActionEventId) {
         return;
     }
@@ -209,7 +212,7 @@ Aggregator.prototype.beginLoad = function(options) {
         return;
     }
 
-    var startTime = this._getRelativeTime(options.startTime || new Date().getTime());
+    var startTime = this._getRelativeTime(options.startTime);
 
     var eventId = this._getUniqueId();
     cmp[_currentEventId + 'load'] = eventId;
@@ -231,10 +234,14 @@ Aggregator.prototype.beginLoad = function(options) {
 
 /**
  * Handles the endLoad client metrics message. Finishes an event
+ * @param {Object} options Information to add to the event
+ * @param {Object} options.component The component recording the event
+ * @param {Number} [options.stopTime = new Date().getTime()] The stop time of the event
+ * @param {Number} [options.whenLongerThan] If specified, the event will be dropped if it did not take longer than
+ * this value. Specified in milliseconds. 
  */
 Aggregator.prototype.endLoad = function(options) {
     var cmp = options.component;
-    delete options.component;
     if (!this._currentUserActionEventId) {
         return;
     }
@@ -257,11 +264,13 @@ Aggregator.prototype.endLoad = function(options) {
         return;
     }
 
-    options.stop = this._getRelativeTime(options.stopTime || new Date().getTime());
+    options.stop = this._getRelativeTime(options.stopTime);
 
-    this._finishEvent(event, _.extend({
-        status: 'Ready'
-    }, options));
+    if (this._shouldRecordEvent(event, options)) {
+        this._finishEvent(event, _.extend({
+            status: 'Ready'
+        }, options));
+    }
 };
 
 /**
@@ -323,7 +332,8 @@ Aggregator.prototype.endDataRequest = function(requester, xhr, requestId) {
         }
         
         var newEventData = {
-            status: 'Ready'
+            status: 'Ready',
+            stop: this._getRelativeTime()
         };
         var rallyRequestId = this._getRallyRequestId(xhr);
 
@@ -374,15 +384,9 @@ Aggregator.prototype._getRelativeTime = function(timestamp) {
  * @private
  */
 Aggregator.prototype._finishEvent = function(existingEvent, newEventData) {
-    var stop = this._getRelativeTime();
-
     var event = _.defaults(
-        {},
+        newEventData || {},
         existingEvent,
-        newEventData,
-        {
-            stop: stop
-        },
         this._defaultParams,
         this._guiTestParams
     );
@@ -547,6 +551,15 @@ Aggregator.prototype._getRallyRequestId = function(response) {
  */
 Aggregator.prototype._findPendingEvent = function(eventId) {
     return _.find(this._pendingEvents, {eId: eventId});
+};
+
+Aggregator.prototype._shouldRecordEvent = function(existingEvent, options) {
+    if (options.whenLongerThan && (options.stop - existingEvent.start) <= options.whenLongerThan) {
+        this._pendingEvents = _.without(this._pendingEvents, existingEvent);
+        return false;
+    }
+
+    return true;
 };
 
 module.exports = Aggregator;
