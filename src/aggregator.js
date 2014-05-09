@@ -65,7 +65,7 @@ var Aggregator = function(config) {
     this.handlers = this.handlers || [];
 
     this.sender = this.sender || new BatchSender({
-        keysToIgnore: [ 'cmp' ],
+        keysToIgnore: [ 'cmp', 'component' ],
         beaconUrl: config.beaconUrl
     });
 
@@ -238,7 +238,7 @@ Aggregator.prototype.beginLoad = function(options) {
  * @param {Object} options.component The component recording the event
  * @param {Number} [options.stopTime = new Date().getTime()] The stop time of the event
  * @param {Number} [options.whenLongerThan] If specified, the event will be dropped if it did not take longer than
- * this value. Specified in milliseconds. 
+ * this value. Specified in milliseconds.
  */
 Aggregator.prototype.endLoad = function(options) {
     var cmp = options.component;
@@ -320,7 +320,7 @@ Aggregator.prototype.beginDataRequest = function(requester, url) {
  */
 Aggregator.prototype.endDataRequest = function(requester, xhr, requestId) {
     if (requester && this._currentUserActionEventId) {
-        
+
         var eventId = requester[_currentEventId + 'dataRequest' + requestId];
 
         var event = this._findPendingEvent(eventId);
@@ -330,7 +330,7 @@ Aggregator.prototype.endDataRequest = function(requester, xhr, requestId) {
             // just ignoring it.
             return;
         }
-        
+
         var newEventData = {
             status: 'Ready',
             stop: this._getRelativeTime()
@@ -537,7 +537,7 @@ Aggregator.prototype._getRallyRequestId = function(response) {
 
         } else if (_.isFunction(response.getResponseHeader)) {
             return response.getResponseHeader('RallyRequestID');
-            
+
         } else if (_.isObject(response.getResponseHeader)) {
             return response.getResponseHeader.RallyRequestID;
         }
