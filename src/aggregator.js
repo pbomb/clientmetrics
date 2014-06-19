@@ -135,7 +135,7 @@ Aggregator.prototype.recordAction = function(options) {
     this._finishEvent(action);
 };
 
-Aggregator.prototype.recordError = function(errorInfo) {
+Aggregator.prototype.recordError = function(errorInfo, miscData) {
     if (this._currentUserActionEventId && this._errorCount < this.errorLimit) {
         ++this._errorCount;
 
@@ -146,14 +146,14 @@ Aggregator.prototype.recordError = function(errorInfo) {
 
         var startTime = this._getRelativeTime();
 
-        var errorEvent = this._startEvent({
+        var errorEvent = this._startEvent(_.defaults({
             eType: 'error',
             error: errorMsg,
             eId: this._getUniqueId(),
             tId: this._currentUserActionEventId,
             start: startTime,
             stop: startTime
-        });
+        }, miscData));
 
         this._finishEvent(errorEvent);
 

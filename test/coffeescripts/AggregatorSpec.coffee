@@ -37,8 +37,8 @@ describe "RallyMetrics.Aggregator", ->
       aggregator.endLoad(component: cmp)
       return cmp
   
-    recordError: (aggregator, errorMessage='an error') ->
-      aggregator.recordError(errorMessage)
+    recordError: (aggregator, errorMessage='an error', miscData) ->
+      aggregator.recordError(errorMessage, miscData)
       return errorMessage
 
     startSession: (aggregator, status="Navigation", defaultParams = {}) ->
@@ -377,6 +377,19 @@ describe "RallyMetrics.Aggregator", ->
       expect(@sentEvents.length).to.equal 2
       errorEvent = @sentEvents[1]
       expect(errorEvent.error.length).to.be.lessThan 2000
+
+    it "should send miscData keys and values if provided", ->
+      aggregator = @createAggregator()
+
+      @recordAction(aggregator)
+
+      obj =
+        key1: 'value1'
+        key2: 2
+      errorMessage = @recordError(aggregator, "error", obj)
+
+      errorEvent = @sentEvents[1]
+      expect(_.pick(errorEvent, _.keys obj)).to.deep.equal obj
 
   describe "#recordComponentReady", ->
     beforeEach ->

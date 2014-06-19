@@ -23,6 +23,17 @@ describe 'RallyMetrics.WindowErrorListener', ->
 
     expect(@aggregator.recordError).to.have.been.calledWith "#{message}, #{file}:#{lineNum}"
 
+  it 'should pass column number and stack trace if available', ->
+    @createListener()
+
+    columnNum = 13
+    window.onerror('message', 'file.js', 22, columnNum)
+    expect(@aggregator.recordError.getCall(0).args[1]).to.deep.equal {columnNumber: columnNum}
+
+    stack = 'stack trace'
+    window.onerror('message', 'file.js', 22, columnNum, stack: stack)
+    expect(@aggregator.recordError.getCall(1).args[1]).to.deep.equal {columnNumber: columnNum, stack: stack}
+
   it 'should gracefully deal with no error message, file and line number', ->
     @createListener()
 

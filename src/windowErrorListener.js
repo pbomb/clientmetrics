@@ -29,7 +29,7 @@
 
     _.extend(ErrorListener.prototype, {
 
-        _windowOnError: function(message, filename, lineNum) {
+        _windowOnError: function(message, filename, lineNum, columnNum, errorObject) {
             if (_.isFunction(this._originalWindowOnError)) {
                 this._originalWindowOnError.call(window, message, filename, lineNum);
             }
@@ -39,7 +39,17 @@
                 filename: filename || '??',
                 lineNumber: _.isNumber(lineNum) ? lineNum : '??'
             });
-            this.aggregator.recordError(errorInfo);
+
+            var miscData = {};
+            if (columnNum) {
+                miscData.columnNumber = columnNum;
+            }
+
+            if (errorObject && errorObject.stack) {
+                miscData.stack = errorObject.stack.substring(0, 1000);
+            }
+
+            this.aggregator.recordError(errorInfo, miscData);
         },
 
         _onUnhandledError: function(evt) {
