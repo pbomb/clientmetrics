@@ -27,7 +27,6 @@
 .redcar
 .settings
 .tmp*
-builds
 classes
 lib
 out

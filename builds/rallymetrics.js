@@ -1,6 +1,265 @@
+//     uuid.js
+//
+//     Copyright (c) 2010-2012 Robert Kieffer
+//     MIT License - http://opensource.org/licenses/mit-license.php
+
+(function() {
+  var _global = this;
+
+  // Unique ID creation requires a high quality random # generator.  We feature
+  // detect to determine the best RNG source, normalizing to a function that
+  // returns 128-bits of randomness, since that's what's usually required
+  var _rng;
+
+  // Node.js crypto-based RNG - http://nodejs.org/docs/v0.6.2/api/crypto.html
+  //
+  // Moderately fast, high quality
+  if (typeof(require) == 'function') {
+    try {
+      var _rb = require('crypto').randomBytes;
+      _rng = _rb && function() {return _rb(16);};
+    } catch(e) {}
+  }
+
+  if (!_rng && _global.crypto && crypto.getRandomValues) {
+    // WHATWG crypto-based RNG - http://wiki.whatwg.org/wiki/Crypto
+    //
+    // Moderately fast, high quality
+    var _rnds8 = new Uint8Array(16);
+    _rng = function whatwgRNG() {
+      crypto.getRandomValues(_rnds8);
+      return _rnds8;
+    };
+  }
+
+  if (!_rng) {
+    // Math.random()-based (RNG)
+    //
+    // If all else fails, use Math.random().  It's fast, but is of unspecified
+    // quality.
+    var  _rnds = new Array(16);
+    _rng = function() {
+      for (var i = 0, r; i < 16; i++) {
+        if ((i & 0x03) === 0) r = Math.random() * 0x100000000;
+        _rnds[i] = r >>> ((i & 0x03) << 3) & 0xff;
+      }
+
+      return _rnds;
+    };
+  }
+
+  // Buffer class to use
+  var BufferClass = typeof(Buffer) == 'function' ? Buffer : Array;
+
+  // Maps for number <-> hex string conversion
+  var _byteToHex = [];
+  var _hexToByte = {};
+  for (var i = 0; i < 256; i++) {
+    _byteToHex[i] = (i + 0x100).toString(16).substr(1);
+    _hexToByte[_byteToHex[i]] = i;
+  }
+
+  // **`parse()` - Parse a UUID into it's component bytes**
+  function parse(s, buf, offset) {
+    var i = (buf && offset) || 0, ii = 0;
+
+    buf = buf || [];
+    s.toLowerCase().replace(/[0-9a-f]{2}/g, function(oct) {
+      if (ii < 16) { // Don't overflow!
+        buf[i + ii++] = _hexToByte[oct];
+      }
+    });
+
+    // Zero out remaining bytes if string was short
+    while (ii < 16) {
+      buf[i + ii++] = 0;
+    }
+
+    return buf;
+  }
+
+  // **`unparse()` - Convert UUID byte array (ala parse()) into a string**
+  function unparse(buf, offset) {
+    var i = offset || 0, bth = _byteToHex;
+    return  bth[buf[i++]] + bth[buf[i++]] +
+            bth[buf[i++]] + bth[buf[i++]] + '-' +
+            bth[buf[i++]] + bth[buf[i++]] + '-' +
+            bth[buf[i++]] + bth[buf[i++]] + '-' +
+            bth[buf[i++]] + bth[buf[i++]] + '-' +
+            bth[buf[i++]] + bth[buf[i++]] +
+            bth[buf[i++]] + bth[buf[i++]] +
+            bth[buf[i++]] + bth[buf[i++]];
+  }
+
+  // **`v1()` - Generate time-based UUID**
+  //
+  // Inspired by https://github.com/LiosK/UUID.js
+  // and http://docs.python.org/library/uuid.html
+
+  // random #'s we need to init node and clockseq
+  var _seedBytes = _rng();
+
+  // Per 4.5, create and 48-bit node id, (47 random bits + multicast bit = 1)
+  var _nodeId = [
+    _seedBytes[0] | 0x01,
+    _seedBytes[1], _seedBytes[2], _seedBytes[3], _seedBytes[4], _seedBytes[5]
+  ];
+
+  // Per 4.2.2, randomize (14 bit) clockseq
+  var _clockseq = (_seedBytes[6] << 8 | _seedBytes[7]) & 0x3fff;
+
+  // Previous uuid creation time
+  var _lastMSecs = 0, _lastNSecs = 0;
+
+  // See https://github.com/broofa/node-uuid for API details
+  function v1(options, buf, offset) {
+    var i = buf && offset || 0;
+    var b = buf || [];
+
+    options = options || {};
+
+    var clockseq = options.clockseq != null ? options.clockseq : _clockseq;
+
+    // UUID timestamps are 100 nano-second units since the Gregorian epoch,
+    // (1582-10-15 00:00).  JSNumbers aren't precise enough for this, so
+    // time is handled internally as 'msecs' (integer milliseconds) and 'nsecs'
+    // (100-nanoseconds offset from msecs) since unix epoch, 1970-01-01 00:00.
+    var msecs = options.msecs != null ? options.msecs : new Date().getTime();
+
+    // Per 4.2.1.2, use count of uuid's generated during the current clock
+    // cycle to simulate higher resolution clock
+    var nsecs = options.nsecs != null ? options.nsecs : _lastNSecs + 1;
+
+    // Time since last uuid creation (in msecs)
+    var dt = (msecs - _lastMSecs) + (nsecs - _lastNSecs)/10000;
+
+    // Per 4.2.1.2, Bump clockseq on clock regression
+    if (dt < 0 && options.clockseq == null) {
+      clockseq = clockseq + 1 & 0x3fff;
+    }
+
+    // Reset nsecs if clock regresses (new clockseq) or we've moved onto a new
+    // time interval
+    if ((dt < 0 || msecs > _lastMSecs) && options.nsecs == null) {
+      nsecs = 0;
+    }
+
+    // Per 4.2.1.2 Throw error if too many uuids are requested
+    if (nsecs >= 10000) {
+      throw new Error('uuid.v1(): Can\'t create more than 10M uuids/sec');
+    }
+
+    _lastMSecs = msecs;
+    _lastNSecs = nsecs;
+    _clockseq = clockseq;
+
+    // Per 4.1.4 - Convert from unix epoch to Gregorian epoch
+    msecs += 12219292800000;
+
+    // `time_low`
+    var tl = ((msecs & 0xfffffff) * 10000 + nsecs) % 0x100000000;
+    b[i++] = tl >>> 24 & 0xff;
+    b[i++] = tl >>> 16 & 0xff;
+    b[i++] = tl >>> 8 & 0xff;
+    b[i++] = tl & 0xff;
+
+    // `time_mid`
+    var tmh = (msecs / 0x100000000 * 10000) & 0xfffffff;
+    b[i++] = tmh >>> 8 & 0xff;
+    b[i++] = tmh & 0xff;
+
+    // `time_high_and_version`
+    b[i++] = tmh >>> 24 & 0xf | 0x10; // include version
+    b[i++] = tmh >>> 16 & 0xff;
+
+    // `clock_seq_hi_and_reserved` (Per 4.2.2 - include variant)
+    b[i++] = clockseq >>> 8 | 0x80;
+
+    // `clock_seq_low`
+    b[i++] = clockseq & 0xff;
+
+    // `node`
+    var node = options.node || _nodeId;
+    for (var n = 0; n < 6; n++) {
+      b[i + n] = node[n];
+    }
+
+    return buf ? buf : unparse(b);
+  }
+
+  // **`v4()` - Generate random UUID**
+
+  // See https://github.com/broofa/node-uuid for API details
+  function v4(options, buf, offset) {
+    // Deprecated - 'format' argument, as supported in v1.2
+    var i = buf && offset || 0;
+
+    if (typeof(options) == 'string') {
+      buf = options == 'binary' ? new BufferClass(16) : null;
+      options = null;
+    }
+    options = options || {};
+
+    var rnds = options.random || (options.rng || _rng)();
+
+    // Per 4.4, set bits for version and `clock_seq_hi_and_reserved`
+    rnds[6] = (rnds[6] & 0x0f) | 0x40;
+    rnds[8] = (rnds[8] & 0x3f) | 0x80;
+
+    // Copy bytes to buffer, if provided
+    if (buf) {
+      for (var ii = 0; ii < 16; ii++) {
+        buf[i + ii] = rnds[ii];
+      }
+    }
+
+    return buf || unparse(rnds);
+  }
+
+  // Export public API
+  var uuid = v4;
+  uuid.v1 = v1;
+  uuid.v4 = v4;
+  uuid.parse = parse;
+  uuid.unparse = unparse;
+  uuid.BufferClass = BufferClass;
+
+  if (typeof define === 'function' && define.amd) {
+    // Publish as AMD module
+    define(function() {return uuid;});
+  } else if (typeof(module) != 'undefined' && module.exports) {
+    // Publish as node.js module
+    module.exports = uuid;
+  } else {
+    // Publish as global (in browsers)
+    var _previousRoot = _global.uuid;
+
+    // **`noConflict()` - (browser only) to reset global 'uuid' var**
+    uuid.noConflict = function() {
+      _global.uuid = _previousRoot;
+      return uuid;
+    };
+
+    _global.uuid = uuid;
+  }
+}).call(this);
+
+(function(root, factory) {
+  if(typeof exports === 'object') {
+    module.exports = factory(require('underscore'));
+  }
+  else if(typeof define === 'function' && define.amd) {
+    define(['underscore'], factory);
+  }
+  else {
+    root.RallyMetrics = factory(root._);
+  }
+}(this, function(_) {
+  var require=function(name){return {"underscore":_}[name];};
+  require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var _ = require('underscore');
 var BatchSender = require('./batchSender');
-var uuid = require('node-uuid');
+var uuid = (window.uuid);
 
 // The default for max number of errors we will send per session.
 // In ALM, a session is started for each page visit.
@@ -570,3 +829,310 @@ Aggregator.prototype._shouldRecordEvent = function(existingEvent, options) {
 };
 
 module.exports = Aggregator;
+
+},{"./batchSender":2}],2:[function(require,module,exports){
+
+var _ = require('underscore');
+var Util = require('./util');
+
+// the min and max length, in characters, that an encoded event can be. Max is set to 2000 since IE can
+// only handle URLs of length ~2048
+var MIN_EVENT_LENGTH = 1700;
+var MAX_EVENT_LENGTH = 2000;
+
+/**
+ * A helper object for {@link Aggregator} whose
+ * job is to send the generated event objects in an efficient manner.
+ *
+ * It does this by batching up the requests and sends as many as it can fit into one GET
+ * request.
+ * @constructor
+ * @param {Object} config Configuration object
+ * @param {String[]} [config.keysToIgnore = new Array()] Which properties on events should not be sent
+ * @param {Number} [config.minLength = 1700] The minimum length of the generated URL that can be sent.
+ * @param {Number} [config.maxLength = 2000] The maximum length of the generated URL that can be sent.
+ * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
+ */
+var BatchSender = function(config) {
+    _.defaults(this, config, {
+        keysToIgnore: [],
+        minLength: MIN_EVENT_LENGTH,
+        maxLength: MAX_EVENT_LENGTH,
+        beaconUrl: "https://trust.f4tech.com/beacon/",
+        emitWarnings: false
+    });
+    this._eventQueue = [];
+};
+
+/**
+ * Send the passed-in event.
+ * @param {object} event - The event that can be sent
+ * @public
+ */
+BatchSender.prototype.send = function(event) {
+    this._eventQueue.push(this._cleanEvent(event));
+    this._sendBatches();
+};
+
+/**
+ * Send any unsent events that are not still pending.
+ * @public
+ */
+BatchSender.prototype.flush = function() {
+    this._sendBatches(true);
+};
+
+/**
+ * @returns {Array} All events that have been started but not yet finished.
+ * @public
+ */
+BatchSender.prototype.getPendingEvents = function() {
+    return this._eventQueue;
+};
+
+/**
+ * @returns {Number} The max length of a batch size to send
+ * @public
+ */
+BatchSender.prototype.getMaxLength = function() {
+    return this.maxLength;
+};
+
+BatchSender.prototype._sendBatches = function(forceIncludeAll) {
+    var nextBatch;
+    while ((nextBatch = this._getNextBatch(forceIncludeAll))) {
+        this._sendBatch(nextBatch);
+    }
+};
+
+BatchSender.prototype._cleanEvent = function(event) {
+    return _.omit(event, this.keysToIgnore);
+};
+
+BatchSender.prototype._getNextBatch = function(forceIncludeAll) {
+    var batchObj = {},
+        batchString,
+        toBeSent = [],
+        url = this._getUrl() + '?',
+        batchSize = 0;
+
+    _.each(this._eventQueue, function(event, currentIndex) {
+        var eventCopy = this._appendIndexToKeys(event, currentIndex),
+            possibleBatchObj = _.extend(batchObj, eventCopy),
+            possibleBatchString = url + this._toQueryString(possibleBatchObj);
+
+        ++batchSize;
+
+        if (possibleBatchString.length < this.maxLength) {
+            toBeSent.push(event);
+            batchString = possibleBatchString;
+            batchObj = possibleBatchObj;
+        } else {
+            if(batchSize === 1 && this.emitWarnings && window.console && window.console.warn) {
+                console.warn('Client metrics: an event is too big to send', event);
+            }
+            return false;
+        }
+    }, this);
+
+    if (_.isEmpty(toBeSent) || (!forceIncludeAll && batchString.length < this.minLength)) {
+        return null;
+    }
+
+    return {
+        url: batchString,
+        events: toBeSent
+    };
+};
+
+/**
+ * Appends indices to the keys of the event. This is to avoid the keys being clobbered
+ * in the GET request. For example if a GET request contains two events, then the key "start"
+ * would be in there twice (as would all the other keys), causing problems. This method
+ * adds an index to the keys causing them to be "start.0", "start.1", etc
+ * @param event
+ * @param index
+ *
+ * @private
+ */
+BatchSender.prototype._appendIndexToKeys = function(event, index) {
+    return _.transform(event, function(result, value, key) {
+        result[key + '.' + index] = value;
+    });
+};
+
+/**
+ * Causes a batch to get sent out to the configured endpoint
+ *
+ * @private
+ */
+BatchSender.prototype._sendBatch = function(batch) {
+    if (!batch) {
+        return;
+    }
+    this._makeGetRequest(batch.url);
+    this._eventQueue = _.difference(this._eventQueue, batch.events);
+};
+
+/**
+ * Get the configured endpoint URL, or the default if one is not configured
+ *
+ * @private
+ */
+BatchSender.prototype._getUrl = function() {
+    return this.beaconUrl;
+};
+
+BatchSender.prototype._removeImageFromDom = function() {
+    Util.removeEventHandler(this, 'load', this._imgCallback);
+    Util.removeEventHandler(this, 'error', this._imgCallback);
+    Util.removeFromDom(this);
+};
+
+BatchSender.prototype._toQueryString = function(data) {
+    return _.map(data, function(value, key) {
+        return encodeURIComponent(key) + '=' + encodeURIComponent(value);
+    }).join('&');
+};
+
+/**
+ * the method that actually sends the GET request to the endpoint. It is done
+ * by adding an img to the DOM and its src being set to the created beaconUrl.
+ *
+ * @private
+ */
+BatchSender.prototype._makeGetRequest = function(url) {
+    var img = document.createElement("img");
+    img.style.width = 0;
+    img.style.height = 0;
+    img.style.display = 'none';
+
+    img._imgCallback = _.bind(this._removeImageFromDom, img);
+    Util.addEventHandler(img, 'load', img._imgCallback, false);
+    Util.addEventHandler(img, 'error', img._imgCallback, false);
+
+    document.body.appendChild(img);
+    img.src = url;
+};
+
+module.exports = BatchSender;
+
+},{"./util":5}],"N+UuJT":[function(require,module,exports){
+module.exports = {
+	"Aggregator": require ("./aggregator")
+	,"BatchSender": require ("./batchSender")
+	,"Util": require ("./util")
+	,"WindowErrorListener": require ("./windowErrorListener")
+}
+;
+},{"./aggregator":1,"./batchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
+module.exports=require('N+UuJT');
+},{}],5:[function(require,module,exports){
+(function(){
+    var _ = require('underscore');
+
+    var Util = {
+        addEventHandler: function(target, eventName, callback, bubble) {
+            if (target.addEventListener) {
+                target.addEventListener(eventName, callback, bubble);
+            } else if (target.attachEvent) {
+                target.attachEvent('on' + eventName, callback);
+            }
+        },
+
+        removeEventHandler: function(target, eventName, callback) {
+            if (target.removeEventListener) {
+                target.removeEventListener(eventName, callback);
+            } else if (target.detachEvent) {
+                target.detachEvent('on' + eventName, callback);
+            }
+        },
+
+        removeFromDom: function(element) {
+            if (_.isFunction(element.remove)) {
+                element.remove();
+            } else if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        }
+    };
+
+    module.exports = Util;
+})();
+},{}],6:[function(require,module,exports){
+(function() {
+    var _ = require('underscore');
+    var Util = require('./util');
+
+    var browserSupportsOnError = true;
+    var errorTpl = _.template("<%= message %>, <%= filename %>:<%= lineNumber %>");
+    var unhandledErrorTpl = _.template("onerror::<%= message %>, <%= filename %>:<%= lineNumber %>");
+
+    /**
+     * @class RallyMetrics.WindowErrorListener
+     * A component that listens for unhandled errors and generates a message for them.
+     *
+     * This is used by client metrics to send client side errors to the beacon
+     * @constructor
+     * @param {RallyMetrics.ClientMetricsAggregator} aggregator
+     * @param {Boolean} [supportsOnError=true] Does the browser support window.onerror?
+     */
+    var ErrorListener = function(aggregator, supportsOnError) {
+        var useOnError = _.isBoolean(supportsOnError) ? supportsOnError : browserSupportsOnError;
+        this.aggregator = aggregator;
+
+        if (useOnError) {
+            this._originalWindowOnError = window.onerror;
+            window.onerror = _.bind(this._windowOnError, this);
+        } else {
+            Util.addEventHandler(window, 'error', _.bind(this._onUnhandledError, this), false);
+        }
+    };
+
+    _.extend(ErrorListener.prototype, {
+
+        _windowOnError: function(message, filename, lineNum, columnNum, errorObject) {
+            if (_.isFunction(this._originalWindowOnError)) {
+                this._originalWindowOnError.call(window, message, filename, lineNum);
+            }
+
+            var errorInfo = errorTpl({
+                message: message || 'unknown message',
+                filename: filename || '??',
+                lineNumber: _.isNumber(lineNum) ? lineNum : '??'
+            });
+
+            var miscData = {};
+            if (columnNum) {
+                miscData.columnNumber = columnNum;
+            }
+
+            if (errorObject && errorObject.stack) {
+                miscData.stack = errorObject.stack.substring(0, 1000);
+            }
+
+            this.aggregator.recordError(errorInfo, miscData);
+        },
+
+        _onUnhandledError: function(evt) {
+            var errorInfo;
+            if (evt.browserEvent) {
+                errorInfo = unhandledErrorTpl({
+                    message: evt.browserEvent.message || 'unknown message',
+                    filename: evt.browserEvent.filename || '??',
+                    lineNumber: evt.browserEvent.lineno || '??'
+                });
+            } else {
+                errorInfo = 'onerror::' + (evt.message || 'unknown error');
+            }
+            this.aggregator.recordError(errorInfo);
+        }
+    });
+
+    module.exports = ErrorListener;
+})();
+
+
+},{"./util":5}]},{},["N+UuJT"])
+  return require('RallyMetrics');
+}));
