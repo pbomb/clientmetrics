@@ -20,23 +20,23 @@ class Panel
 describe "RallyMetrics.Aggregator", ->
   beforeEach ->
     @rallyRequestId = 123456
-    
+
   helpers
     recordAction: (aggregator, cmp, description="an action") ->
       cmp ?= new Panel()
       aggregator.recordAction(component: cmp, description: description )
       return cmp
-  
+
     beginLoad: (aggregator, cmp, description='an action', miscData={}) ->
       cmp ?= new Panel()
       aggregator.beginLoad(component: cmp, description: description, miscData: miscData )
       return cmp
-  
+
     endLoad: (aggregator, cmp) ->
       cmp ?= new Panel()
       aggregator.endLoad(component: cmp)
       return cmp
-  
+
     recordError: (aggregator, errorMessage='an error', miscData) ->
       aggregator.recordError(errorMessage, miscData)
       return errorMessage
@@ -44,7 +44,7 @@ describe "RallyMetrics.Aggregator", ->
     startSession: (aggregator, status="Navigation", defaultParams = {}) ->
       aggregator.startSession(status, defaultParams)
       return { status, defaultParams }
-      
+
     createAggregator: (config={}) ->
       handler =
         getAppName: @stub().returns('testAppName')
@@ -56,7 +56,7 @@ describe "RallyMetrics.Aggregator", ->
       aggregatorConfig = _.defaults config,
         sender: @createSender()
         handlers: [handler]
-  
+
       new RallyMetrics.Aggregator(aggregatorConfig)
 
     createSender: ->
@@ -79,7 +79,7 @@ describe "RallyMetrics.Aggregator", ->
   describe 'flushInterval', ->
     afterEach ->
       @aggregator?.destroy()
-      
+
     it 'should flush on the specified interval', (done) ->
       @aggregator = @createAggregator
         flushInterval: 10
@@ -93,21 +93,21 @@ describe "RallyMetrics.Aggregator", ->
         stop = new Date().getTime()
         expect(stop - start).to.be.greaterThan 20
         done()
-      
+
   describe '#startSession', ->
     it "should start a new session", ->
       aggregator = @createAggregator()
 
       status = 'Navigation'
       defaultParams = foo: 'bar'
-      
+
       @startSession aggregator, status, defaultParams
 
     it "should flush the sender", ->
       aggregator = @createAggregator()
 
       @startSession aggregator
-      
+
       expect(aggregator.sender.flush).to.have.been.calledOnce
 
     it "should append defaultParams to events", ->
@@ -115,10 +115,10 @@ describe "RallyMetrics.Aggregator", ->
 
       hash = "/some/hash"
       defaultParams = hash: hash
-      
+
       aggregator.startSession "Session 1", defaultParams
       @recordAction(aggregator)
-  
+
       actionEvent = @findActionEvent()
       expect(actionEvent.hash).to.equal hash
 
@@ -139,7 +139,7 @@ describe "RallyMetrics.Aggregator", ->
 
     it "should trim the request url correctly", ->
       aggregator = @createAggregatorAndRecordAction()
-      
+
       expectedUrl = "3.14/Foo.js"
       entireUrl = "http://localhost/testing/webservice/#{expectedUrl}?bar=baz&boo=buzz"
 
@@ -148,36 +148,36 @@ describe "RallyMetrics.Aggregator", ->
 
       dataEvent = @findDataEvent()
       expect(dataEvent.url).to.equal expectedUrl
-    
+
     it "should have the component hierarchy", ->
       aggregator = @createAggregatorAndRecordAction()
       requester = new Panel()
 
       metricsData = aggregator.beginDataRequest requester, "someUrl"
       aggregator.endDataRequest requester, @xhrFake, metricsData.requestId
-      
+
       dataEvent = @findDataEvent()
       expect(dataEvent.cmpH).to.equal "Panel"
-      
+
     it "returns ID properties for AJAX headers", ->
       aggregator = @createAggregatorAndRecordAction()
       requester = this
 
       metricsData = aggregator.beginDataRequest requester, "someUrl"
       aggregator.endDataRequest requester, @xhrFake, metricsData.requestId
-      
+
       actionEvent = @findActionEvent()
       dataEvent = @findDataEvent()
 
       expect(metricsData.xhrHeaders).to.eql 'X-Parent-Id': dataEvent.eId, 'X-Trace-Id': actionEvent.eId
-  
+
     it "does not return ID properties for AJAX headers when request is not instrumented", ->
       aggregator = @createAggregatorAndRecordAction()
-      
+
       metricsData = aggregator.beginDataRequest null, "someUrl"
-      
+
       expect(metricsData).to.be.undefined
-      
+
     it "appends the rallyRequestId onto dataRequest events", ->
       aggregator = @createAggregatorAndRecordAction()
 
@@ -193,7 +193,7 @@ describe "RallyMetrics.Aggregator", ->
 
       dataEvent = @findDataEvent()
       expect(dataEvent.rallyRequestId).to.equal @rallyRequestId
-    
+
   describe 'client metric event properties', ->
     beforeEach ->
       @appName = "testAppName"
@@ -206,7 +206,7 @@ describe "RallyMetrics.Aggregator", ->
       @recordAction(aggregator, parentPanel)
       @beginLoad(aggregator, childPanel)
       @endLoad(aggregator, childPanel)
-      
+
       @actionEvent = @sentEvents[0]
       @loadEvent = @sentEvents[1]
       @browserTabId = aggregator._browserTabId
@@ -217,7 +217,7 @@ describe "RallyMetrics.Aggregator", ->
       expect(@loadEvent.eId).to.match(uuidFormat)
       expect(@loadEvent.pId).to.match(uuidFormat)
       expect(@loadEvent.tabId).to.match(uuidFormat)
-      
+
     it "should have trace id and event id for the action event", ->
       expect(@actionEvent.tId).to.be.a('string')
       expect(@actionEvent.eId).to.equal @actionEvent.tId
@@ -264,19 +264,19 @@ describe "RallyMetrics.Aggregator", ->
     it "should find the correct traceId", ->
       aggregator = @createAggregator()
       handler = aggregator.handlers[0]
-      
+
       parentPanel = new Panel()
       childPanel = parentPanel.add(xtype: "panel")
       @stub(handler, "getComponentHierarchy").returns [childPanel, parentPanel]
-  
+
       @recordAction(aggregator, parentPanel)
       @recordAction(aggregator, parentPanel)
       @beginLoad(aggregator, childPanel)
       @endLoad(aggregator, childPanel)
-      
+
       secondActionEvent = @sentEvents[1]
       loadEvent = @sentEvents[2]
-  
+
       expect(loadEvent.pId).to.equal secondActionEvent.eId
 
     it "should not parent to an event that has completed", ->
@@ -297,7 +297,7 @@ describe "RallyMetrics.Aggregator", ->
 
       @beginLoad(aggregator, childPanel2)
       @endLoad(aggregator, childPanel2)
-      
+
       # action, childPanel1, parentPanel1, childPanel2
       actionEvent = @sentEvents[0]
       parentLoadEvent = @sentEvents[2]
@@ -307,24 +307,24 @@ describe "RallyMetrics.Aggregator", ->
       expect(parentLoadEvent.tId).to.equal actionEvent.eId
       expect(childPanel1LoadEvent.tId).to.equal actionEvent.eId
       expect(childPanel2LoadEvent.tId).to.equal actionEvent.eId
-      
+
       # child 1 should parent to the parent panel because it happened while the parent was loading
       expect(childPanel1LoadEvent.pId).to.equal parentLoadEvent.eId
-      
+
       # child 2 should not parent to the parent panel because it happened afer the parent was done
       expect(childPanel2LoadEvent.pId).to.equal actionEvent.eId
 
   describe 'miscData', ->
     it "should append miscData to an event and not overwrite known properties", ->
       aggregator = @createAggregatorAndRecordAction()
-  
+
       miscData =
         eId: "this shouldnt clobeber the real eId"
         foo: "this should get through"
 
       cmp = @beginLoad(aggregator, null, "a load", miscData)
       @endLoad(aggregator, cmp)
-  
+
       loadEvent = @findLoadEvent()
 
       expect(loadEvent.eId).to.be.a('string')
@@ -342,34 +342,34 @@ describe "RallyMetrics.Aggregator", ->
       errorEvent = @sentEvents[1]
       expect(errorEvent.eType).to.equal "error"
       expect(errorEvent.error).to.equal errorMessage
-  
+
     it "does not create an error event if the error limit has been reached", ->
       aggregator = @createAggregator(errorLimit: 3)
       @recordAction(aggregator)
 
       for i in [0...5]
         errorMessage = @recordError(aggregator)
-      
+
       # one action plus three errors
       expect(@sentEvents.length).to.equal 4
 
       for errorEvent in @sentEvents[1..-1]
         expect(errorEvent.eType).to.equal "error"
         expect(errorEvent.error).to.equal errorMessage
-  
+
     it "resets the error count whenever a new session starts", ->
       aggregator = @createAggregator()
       aggregator._errorCount = 2
       aggregator.startSession "newsession"
       expect(aggregator._errorCount).to.equal 0
-  
+
     it "truncates long error info", ->
       errorMessage = ""
       for i in [1..1000]
         errorMessage += "uh oh"
-        
+
       expect(errorMessage.length).to.be.greaterThan 2000
-  
+
       aggregator = @createAggregator()
       @recordAction(aggregator)
       @recordError(aggregator, errorMessage)
@@ -474,7 +474,7 @@ describe "RallyMetrics.Aggregator", ->
       aggregator = @createAggregator()
       aggregator._guiTestParams = foo: "bar"
       @recordAction(aggregator)
-      
+
       actionEvent = @findActionEvent()
       expect(actionEvent.foo).to.equal "bar"
 
@@ -493,23 +493,32 @@ describe "RallyMetrics.Aggregator", ->
 
       response =
         getResponseHeader: @stub().returns("myrequestid")
-        
-      expect(aggregator._getRallyRequestId(response)).to.equal "myrequestid"   
-      expect(response.getResponseHeader).to.have.been.calledWith("RallyRequestID")  
+
+      expect(aggregator._getRallyRequestId(response)).to.equal "myrequestid"
+      expect(response.getResponseHeader).to.have.been.calledWith("RallyRequestID")
 
     it "should not find a RallyRequestId if there is no getResponseHeader", ->
       aggregator = @createAggregator()
 
       response = {}
-        
+
       expect(aggregator._getRallyRequestId(response)).to.be.undefined
 
     it "should not find a RallyRequestId if there getResponseHeader is something else", ->
       aggregator = @createAggregator()
 
       response = getResponseHeader: 123
-        
+
       expect(aggregator._getRallyRequestId(response)).to.be.undefined
+
+    it "should find a RallyRequestID if there is a headers method", ->
+      aggregator = @createAggregator()
+
+      response =
+        headers: @stub().returns("myrequestid")
+
+      expect(aggregator._getRallyRequestId(response)).to.equal "myrequestid"
+      expect(response.headers).to.have.been.calledWith("RallyRequestID")
 
   describe 'whenLongerThan parameter', ->
     it "should not send the event if the duration is not longer than the 'whenLongerThan' parameter value", ->
@@ -523,7 +532,7 @@ describe "RallyMetrics.Aggregator", ->
         description: "a load",
         startTime: startTime
 
-      aggregator.endLoad 
+      aggregator.endLoad
         component: cmp,
         stopTime: startTime + 1000
         whenLongerThan: 1000
@@ -541,10 +550,9 @@ describe "RallyMetrics.Aggregator", ->
         description: "a load",
         startTime: startTime
 
-      aggregator.endLoad 
+      aggregator.endLoad
         component: cmp,
         stopTime: startTime + 1001
         whenLongerThan: 1000
 
       expect(@sentEvents.length).to.equal 1
-

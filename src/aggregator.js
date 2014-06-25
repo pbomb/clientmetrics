@@ -532,15 +532,21 @@ Aggregator.prototype._getUrl = function(url) {
  * @private
  */
 Aggregator.prototype._getRallyRequestId = function(response) {
+    var headerName = 'RallyRequestID';
+
     if (response) {
         if (_.isObject(response.responseHeaders)) {
             return response.responseHeaders.RallyRequestID;
 
         } else if (_.isFunction(response.getResponseHeader)) {
-            return response.getResponseHeader('RallyRequestID');
+            return response.getResponseHeader(headerName);
 
         } else if (_.isObject(response.getResponseHeader)) {
-            return response.getResponseHeader.RallyRequestID;
+            return response.getResponseHeader[headerName];
+
+        } else if (_.isFunction(response.headers)) {
+            // support for Angular, which does not expose a standard XHR object
+            return response.headers(headerName);
         }
     }
 };
