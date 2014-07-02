@@ -276,9 +276,14 @@ Aggregator.prototype.endLoad = function(options) {
 
 /**
  * Handler for before Ajax requests go out. Starts an event for the request,
- * Adds headers to the ajax request that links the request with the client metrics data
+ *
+ * returns an object containting requestId and xhrHeaders
+ *  -- requestId should be fed back into endDataRequest to associate the two calls
+ *  -- xhrHeaders contains headers that should be added to the AJAX data request
+ *
+ * returns undefined if the data request could not be instrumented
  */
-Aggregator.prototype.beginDataRequest = function(requester, url) {
+Aggregator.prototype.beginDataRequest = function(requester, url, miscData) {
     var metricsData;
     if (requester && this._currentUserActionEventId) {
         var eventId = this._getUniqueId();
@@ -287,7 +292,7 @@ Aggregator.prototype.beginDataRequest = function(requester, url) {
         var ajaxRequestId = this._getUniqueId();
         requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
 
-        this._startEvent({
+        this._startEvent(_.defaults({
             eType: 'dataRequest',
             cmp: requester,
             cmpH: this._getHierarchyString(requester),
@@ -297,7 +302,7 @@ Aggregator.prototype.beginDataRequest = function(requester, url) {
             eId: eventId,
             tId: traceId,
             pId: parentId
-        });
+        }, miscData));
 
         // NOTE: this looks wrong, but it's not
         // This client side dataRequest event is going to be

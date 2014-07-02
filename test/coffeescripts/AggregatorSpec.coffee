@@ -137,6 +137,16 @@ describe "RallyMetrics.Aggregator", ->
     afterEach ->
       @xhrFake.restore()
 
+    it "should accept miscData", ->
+      aggregator = @createAggregatorAndRecordAction()
+
+      miscData = such: "wow"
+      metricsData = aggregator.beginDataRequest this, "/foo", miscData
+      aggregator.endDataRequest this, @xhrFake, metricsData.requestId
+
+      dataEvent = @findDataEvent()
+      expect(dataEvent.such).to.equal "wow"
+
     it "should trim the request url correctly", ->
       aggregator = @createAggregatorAndRecordAction()
 
