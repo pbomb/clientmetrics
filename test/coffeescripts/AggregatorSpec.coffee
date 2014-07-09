@@ -530,6 +530,11 @@ describe "RallyMetrics.Aggregator", ->
       expect(aggregator._getRallyRequestId(response)).to.equal "myrequestid"
       expect(response.headers).to.have.been.calledWith("RallyRequestID")
 
+    it "should find a RallyRequestId if its passed in as a string", ->
+      aggregator = @createAggregator()
+      expect(aggregator._getRallyRequestId("ImARequestId")).to.equal "ImARequestId"
+      expect(aggregator._getRallyRequestId(123)).to.be.undefined
+
   describe 'whenLongerThan parameter', ->
     it "should not send the event if the duration is not longer than the 'whenLongerThan' parameter value", ->
       aggregator = @createAggregatorAndRecordAction()
