@@ -540,7 +540,10 @@ Aggregator.prototype._getRallyRequestId = function(response) {
     var headerName = 'RallyRequestID';
 
     if (response) {
-        if (_.isObject(response.responseHeaders)) {
+        if (_.isString(response)) {
+            return response;
+
+        } else if (_.isObject(response.responseHeaders)) {
             return response.responseHeaders.RallyRequestID;
 
         } else if (_.isFunction(response.getResponseHeader)) {
