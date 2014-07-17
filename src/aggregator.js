@@ -113,7 +113,7 @@ Aggregator.prototype.startSession = function(status, defaultParams) {
 Aggregator.prototype.recordAction = function(options) {
     var cmp = options.component;
     delete options.component;
-    var eventId = this._getUniqueId();
+    var traceId = this._getUniqueId();
     var startTime = this._getRelativeTime(options.startTime);
 
     var action = this._startEvent(_.defaults({
@@ -122,21 +122,32 @@ Aggregator.prototype.recordAction = function(options) {
         cmpH: this._getHierarchyString(cmp),
         eDesc: options.description,
         cmpId: this._getComponentId(cmp),
-        eId: eventId,
-        tId: eventId,
+        eId: traceId,
+        tId: traceId,
         status: 'Ready',
         cmpType: this.getComponentType(cmp),
         start: startTime,
         stop: startTime
     }, options.miscData));
 
-    this._currentUserActionEventId = action.eId;
-
+    this._currentTraceId = traceId;
     this._finishEvent(action);
+
+    return traceId;
 };
 
 Aggregator.prototype.recordError = function(errorInfo, miscData) {
-    if (this._currentUserActionEventId && this._errorCount < this.errorLimit) {
+    var options, traceId;
+    if (_.isObject(errorInfo) && errorInfo.errorInfo) {
+        options = errorInfo;
+        errorInfo = options.errorInfo;
+        miscData = options.miscData;
+        traceId = options.traceId;
+    }
+
+    traceId = traceId || this._currentTraceId;
+
+    if (traceId && this._errorCount < this.errorLimit) {
         ++this._errorCount;
 
         var errorMsg = errorInfo || 'unknown error';
@@ -150,7 +161,7 @@ Aggregator.prototype.recordError = function(errorInfo, miscData) {
             eType: 'error',
             error: errorMsg,
             eId: this._getUniqueId(),
-            tId: this._currentUserActionEventId,
+            tId: traceId,
             start: startTime,
             stop: startTime
         }, miscData));
@@ -167,6 +178,7 @@ Aggregator.prototype.recordComponentReady = function(options) {
         return;
     }
 
+    var traceId = options.traceId || this._currentTraceId;
     var cmp = options.component,
         cmpHierarchy = this._getHierarchyString(cmp);
 
@@ -183,8 +195,8 @@ Aggregator.prototype.recordComponentReady = function(options) {
         start: this._sessionStartTime,
         stop: this._getRelativeTime(options.stopTime),
         eId: this._getUniqueId(),
-        tId: this._currentUserActionEventId,
-        pId: this._currentUserActionEventId,
+        tId: traceId,
+        pId: traceId,
         cmpType: this.getComponentType(cmp),
         cmpH: cmpHierarchy,
         eDesc: 'component ready',
@@ -204,7 +216,9 @@ Aggregator.prototype.recordComponentReady = function(options) {
  */
 Aggregator.prototype.beginLoad = function(options) {
     var cmp = options.component;
-    if (!this._currentUserActionEventId) {
+    var traceId = options.traceId || this._currentTraceId;
+
+    if (!traceId) {
         return;
     }
 
@@ -226,8 +240,8 @@ Aggregator.prototype.beginLoad = function(options) {
         cmpId: this._getComponentId(cmp),
         eId: eventId,
         cmpType: this.getComponentType(cmp),
-        tId: this._currentUserActionEventId,
-        pId: this._findParentId(cmp, this._currentUserActionEventId),
+        tId: traceId,
+        pId: this._findParentId(cmp, traceId),
         start: startTime
     }, options.miscData);
     this._startEvent(event);
@@ -243,9 +257,6 @@ Aggregator.prototype.beginLoad = function(options) {
  */
 Aggregator.prototype.endLoad = function(options) {
     var cmp = options.component;
-    if (!this._currentUserActionEventId) {
-        return;
-    }
 
     var eventId = cmp[_currentEventId + 'load'];
 
@@ -284,11 +295,20 @@ Aggregator.prototype.endLoad = function(options) {
  * returns undefined if the data request could not be instrumented
  */
 Aggregator.prototype.beginDataRequest = function(requester, url, miscData) {
-    var metricsData;
-    if (requester && this._currentUserActionEventId) {
+    var options, traceId, metricsData;
+    if (arguments.length === 1) {
+        options = arguments[0];
+        requester = options.requester;
+        url = options.url;
+        miscData = options.miscData;
+        traceId = options.traceId;
+    }
+
+    traceId = traceId || this._currentTraceId;
+
+    if (requester && traceId) {
         var eventId = this._getUniqueId();
-        var traceId = this._currentUserActionEventId;
-        var parentId = this._findParentId(requester, this._currentUserActionEventId);
+        var parentId = this._findParentId(requester, traceId);
         var ajaxRequestId = this._getUniqueId();
         requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
 
@@ -325,8 +345,16 @@ Aggregator.prototype.beginDataRequest = function(requester, url, miscData) {
  * handler for after the Ajax request has finished. Finishes an event for the data request
  */
 Aggregator.prototype.endDataRequest = function(requester, xhr, requestId) {
-    if (requester && this._currentUserActionEventId) {
+    var options;
 
+    if (arguments.length === 1) {
+        options = arguments[0];
+        requester = options.requester;
+        xhr = options.xhr;
+        requestId = options.requestId;
+    }
+
+    if (requester) {
         var eventId = requester[_currentEventId + 'dataRequest' + requestId];
 
         var event = this._findPendingEvent(eventId);

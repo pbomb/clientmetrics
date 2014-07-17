@@ -1,3 +1,5 @@
+uuidFormat = /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}/
+
 class Panel
   constructor: (@parent) ->
     @children = []
@@ -67,14 +69,18 @@ describe "RallyMetrics.Aggregator", ->
       getMaxLength: -> 2000
       flush: @stub()
 
-    createAggregatorAndRecordAction: ->
-      aggregator = @createAggregator()
+    createAggregatorAndRecordAction: (config = {})->
+      aggregator = @createAggregator(config)
       @recordAction(aggregator)
       aggregator
 
     findActionEvent: -> _.find(@sentEvents, eType: 'action')
     findLoadEvent: -> _.find(@sentEvents, eType: 'load')
     findDataEvent: -> _.find(@sentEvents, eType: 'dataRequest')
+    findErrorEvent: -> _.find(@sentEvents, eType: 'error')
+    findComponentReadyEvent: ->
+      _.find @sentEvents, (e) ->
+        e.eType == 'load' && e.componentReady
 
   describe 'flushInterval', ->
     afterEach ->
@@ -204,6 +210,50 @@ describe "RallyMetrics.Aggregator", ->
       dataEvent = @findDataEvent()
       expect(dataEvent.rallyRequestId).to.equal @rallyRequestId
 
+    describe "passing in traceId", ->
+      it "should allow options parameter for begin/endDataRequest", ->
+        aggregator = @createAggregatorAndRecordAction()
+        requester = this
+
+        metricsData = aggregator.beginDataRequest(
+          requester: requester
+          url: "someUrl"
+          miscData: doge: 'wow'
+        )
+
+        aggregator.endDataRequest(
+          requester: requester
+          xhr: @xhrFake
+          requestId: metricsData.requestId
+        )
+
+        dataEvent = @findDataEvent()
+        expect(dataEvent.url).to.equal("someUrl")
+        expect(dataEvent.tId).to.match(uuidFormat)
+        expect(dataEvent.eId).to.match(uuidFormat)
+        expect(dataEvent.pId).to.match(uuidFormat)
+        expect(dataEvent.doge).to.equal("wow")
+
+      it "should allow a traceId to be passed in", ->
+        traceId = uuid.v4()
+        aggregator = @createAggregator()
+        requester = this
+
+        metricsData = aggregator.beginDataRequest(
+          requester: requester
+          url: "someUrl"
+          traceId: traceId
+        )
+
+        aggregator.endDataRequest(
+          requester: requester
+          xhr: @xhrFake
+          requestId: metricsData.requestId
+        )
+
+        dataEvent = @findDataEvent()
+        expect(dataEvent.tId).to.equal(traceId)
+
   describe 'client metric event properties', ->
     beforeEach ->
       @appName = "testAppName"
@@ -222,7 +272,6 @@ describe "RallyMetrics.Aggregator", ->
       @browserTabId = aggregator._browserTabId
 
     it "should generate uuids for the event id and trace id", ->
-      uuidFormat = /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}/
       expect(@loadEvent.tId).to.match(uuidFormat)
       expect(@loadEvent.eId).to.match(uuidFormat)
       expect(@loadEvent.pId).to.match(uuidFormat)
@@ -341,21 +390,46 @@ describe "RallyMetrics.Aggregator", ->
       expect(loadEvent.eId).not.to.equal miscData.eId
       expect(loadEvent.foo).to.equal miscData.foo
 
-  describe '#recordError', ->
-    it "sends an error event", ->
+  describe "#recordAction", ->
+    it "should return the traceId", ->
+      aggregator = @createAggregator()
+      traceId = aggregator.recordAction
+        component: {}
+        description: "an action"
+
+      expect(traceId).to.match(uuidFormat)
+
+  describe "#beginLoad", ->
+    beforeEach ->
+      @panel = new Panel()
+
+    it "should allow a traceId to be passed in", ->
+      traceId = uuid.v4()
       aggregator = @createAggregator()
 
-      @recordAction(aggregator)
+      aggregator.beginLoad(
+        component: @panel
+        traceId: traceId
+        description: "panel loading"
+      )
+      aggregator.endLoad(component: @panel)
+
+      loadEvent = @findLoadEvent()
+      expect(loadEvent.tId).to.equal(traceId)
+
+
+  describe '#recordError', ->
+    it "sends an error event", ->
+      aggregator = @createAggregatorAndRecordAction()
       errorMessage = @recordError(aggregator)
 
       expect(@sentEvents.length).to.equal 2
-      errorEvent = @sentEvents[1]
+      errorEvent = @findErrorEvent()
       expect(errorEvent.eType).to.equal "error"
       expect(errorEvent.error).to.equal errorMessage
 
     it "does not create an error event if the error limit has been reached", ->
-      aggregator = @createAggregator(errorLimit: 3)
-      @recordAction(aggregator)
+      aggregator = @createAggregatorAndRecordAction(errorLimit: 3)
 
       for i in [0...5]
         errorMessage = @recordError(aggregator)
@@ -380,26 +454,46 @@ describe "RallyMetrics.Aggregator", ->
 
       expect(errorMessage.length).to.be.greaterThan 2000
 
-      aggregator = @createAggregator()
-      @recordAction(aggregator)
+      aggregator = @createAggregatorAndRecordAction()
       @recordError(aggregator, errorMessage)
 
       expect(@sentEvents.length).to.equal 2
-      errorEvent = @sentEvents[1]
+      errorEvent = @findErrorEvent()
       expect(errorEvent.error.length).to.be.lessThan 2000
 
     it "should send miscData keys and values if provided", ->
-      aggregator = @createAggregator()
-
-      @recordAction(aggregator)
+      aggregator = @createAggregatorAndRecordAction()
 
       obj =
         key1: 'value1'
         key2: 2
       errorMessage = @recordError(aggregator, "error", obj)
 
-      errorEvent = @sentEvents[1]
+      errorEvent = @findErrorEvent()
       expect(_.pick(errorEvent, _.keys obj)).to.deep.equal obj
+
+    it "should allow an options object parameter", ->
+      aggregator = @createAggregatorAndRecordAction()
+      aggregator.recordError(
+        errorInfo: "an error occured"
+        miscData: doge: 'wow'
+      )
+
+      errorEvent = @findErrorEvent()
+      expect(errorEvent.error).to.equal("an error occured")
+      expect(errorEvent.doge).to.equal("wow")
+
+    it "should allow a traceId to be passed in", ->
+      traceId = uuid.v4()
+      aggregator = @createAggregator()
+      aggregator.recordError(
+        errorInfo: "an error occured"
+        traceId: traceId
+      )
+
+      errorEvent = @findErrorEvent()
+      expect(errorEvent.tId).to.equal(traceId)
+
 
   describe "#recordComponentReady", ->
     beforeEach ->
@@ -414,8 +508,9 @@ describe "RallyMetrics.Aggregator", ->
       @startSession(@aggregator)
       @aggregator.recordComponentReady(component: @panel)
       expect(@sentEvents.length).to.equal 1
-      expect(@sentEvents[0].tId).to.be.undefined
-      expect(@sentEvents[0].componentReady).to.equal true
+      componentReadyEvent = @findComponentReadyEvent()
+      expect(componentReadyEvent.tId).to.be.undefined
+      expect(componentReadyEvent.componentReady).to.equal true
 
     it "should record the traceId if one is present", ->
       @startSession(@aggregator)
@@ -423,8 +518,8 @@ describe "RallyMetrics.Aggregator", ->
       @aggregator.recordComponentReady(component: @panel)
       expect(@sentEvents.length).to.equal 2
 
-      actionEvent = @sentEvents[0]
-      componentReadyEvent = @sentEvents[1]
+      actionEvent = @findActionEvent()
+      componentReadyEvent = @findComponentReadyEvent()
 
       expect(actionEvent.tId).to.equal actionEvent.eId
       expect(componentReadyEvent.tId).to.equal actionEvent.eId
@@ -437,7 +532,7 @@ describe "RallyMetrics.Aggregator", ->
       @aggregator.recordComponentReady(component: @panel)
 
       expect(@sentEvents.length).to.equal 1
-      componentReadyEvent = @sentEvents[0]
+      componentReadyEvent = @findComponentReadyEvent()
 
       expect(componentReadyEvent.start).to.be.a('number')
       expect(componentReadyEvent.start).to.equal(@aggregator._sessionStartTime)
@@ -451,8 +546,9 @@ describe "RallyMetrics.Aggregator", ->
       @aggregator.recordComponentReady(component: @panel)
 
       expect(@sentEvents.length).to.equal 1
-      expect(@sentEvents[0].eType).to.equal "load"
-      expect(@sentEvents[0].componentReady).to.equal true
+      componentReadyEvent = @findComponentReadyEvent()
+      expect(componentReadyEvent.eType).to.equal "load"
+      expect(componentReadyEvent.componentReady).to.equal true
 
     it "should ignore a second component's ready if it has the same hierarchy as the previous component", ->
       @startSession(@aggregator)
@@ -461,8 +557,9 @@ describe "RallyMetrics.Aggregator", ->
       @aggregator.recordComponentReady(component: new Panel())
 
       expect(@sentEvents.length).to.equal 1
-      expect(@sentEvents[0].eType).to.equal "load"
-      expect(@sentEvents[0].componentReady).to.equal true
+      componentReadyEvent = @findComponentReadyEvent()
+      expect(componentReadyEvent.eType).to.equal "load"
+      expect(componentReadyEvent.componentReady).to.equal true
 
     it "should record a component as ready a second time if a new session started", ->
       @startSession(@aggregator)
@@ -478,6 +575,21 @@ describe "RallyMetrics.Aggregator", ->
       expect(@sentEvents[1].eType).to.equal "load"
       expect(@sentEvents[0].componentReady).to.equal true
       expect(@sentEvents[1].componentReady).to.equal true
+
+    it "should allow a traceId to be passed in", ->
+      traceId = uuid.v4()
+      @startSession(@aggregator)
+      @aggregator.recordComponentReady(
+        component: @panel
+        traceId: traceId
+      )
+
+      componentReadyEvent = @findComponentReadyEvent()
+
+      expect(componentReadyEvent.tId).to.equal traceId
+      expect(componentReadyEvent.pId).to.equal traceId
+      expect(componentReadyEvent.componentReady).to.equal true
+
 
   describe 'additional parameters', ->
     it "should append guiTestParams to events", ->
