@@ -13,6 +13,17 @@ describe "RallyMetrics.BatchSender", ->
     @spy document.body, 'appendChild'
 
   describe 'config options', ->
+    describe 'min and max length', ->
+      describe 'when Internet Explorer', ->
+        it 'should set the max length to 2000', ->
+          sender = @createSender(isIE: true)
+          expect(sender.maxLength).to.eql(2000)
+
+      describe 'when a good browser', ->
+        it 'should set the max length to 20,000', ->
+          sender = @createSender()
+          expect(sender.maxLength).to.eql(20000)
+
     describe 'keysToIgnore', ->
       it "should strip out all keys in keysToIgnore", ->
         aKeyToIgnore = "testKey"

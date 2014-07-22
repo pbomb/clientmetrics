@@ -261,6 +261,13 @@ var _ = require('underscore');
 var BatchSender = require('./batchSender');
 var uuid = (window.uuid);
 
+function isIE() {
+    var ua = navigator.userAgent.toLowerCase();
+    // MSIE = IE 6-10, Trident = IE11 (and hopefully 12...)
+    // IE11 running in a legacy/quirks/whatever mode will have MSIE in its ua
+    return ua.indexOf('msie') > -1 || ua.indexOf('trident') > -1;
+}
+
 // The default for max number of errors we will send per session.
 // In ALM, a session is started for each page visit.
 var DEFAULT_ERROR_LIMIT = 25;
@@ -326,7 +333,8 @@ var Aggregator = function(config) {
     this.sender = this.sender || new BatchSender({
         keysToIgnore: [ 'cmp', 'component' ],
         beaconUrl: config.beaconUrl,
-        emitWarnings: config.emitWarnings
+        emitWarnings: config.emitWarnings,
+        isIE: isIE()
     });
 
     if (_.isFunction(this.sender.getMaxLength)) {
@@ -874,7 +882,8 @@ var Util = require('./util');
 // the min and max length, in characters, that an encoded event can be. Max is set to 2000 since IE can
 // only handle URLs of length ~2048
 var MIN_EVENT_LENGTH = 1700;
-var MAX_EVENT_LENGTH = 2000;
+var MAX_IE_EVENT_LENGTH = 2000;
+var MAX_MODERN_BROWSER_EVENT_LENGTH = 20000;
 
 /**
  * A helper object for {@link Aggregator} whose
@@ -893,7 +902,7 @@ var BatchSender = function(config) {
     _.defaults(this, config, {
         keysToIgnore: [],
         minLength: MIN_EVENT_LENGTH,
-        maxLength: MAX_EVENT_LENGTH,
+        maxLength: config.isIE ? MAX_IE_EVENT_LENGTH : MAX_MODERN_BROWSER_EVENT_LENGTH,
         beaconUrl: "https://trust.f4tech.com/beacon/",
         emitWarnings: false
     });
