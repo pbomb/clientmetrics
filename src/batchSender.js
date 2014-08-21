@@ -4,11 +4,12 @@ var Util = require('./util');
 
 // the min and max length, in characters, that an encoded event can be.
 // Max is set to 2000 for IE since IE can only handle URLs of length ~2048
-// other browsers can handle much larger URLs
+// other browsers can handle much larger URLs, but NGINX by default only allows
+// 8192 characters.
 var MIN_IE_EVENT_LENGTH = 1700;
 var MAX_IE_EVENT_LENGTH = 2000;
-var MIN_MODERN_BROWSER_EVENT_LENGTH = 17000;
-var MAX_MODERN_BROWSER_EVENT_LENGTH = 20000;
+var MIN_MODERN_BROWSER_EVENT_LENGTH = 7000;
+var MAX_MODERN_BROWSER_EVENT_LENGTH = 8000;
 
 /**
  * A helper object for {@link Aggregator} whose

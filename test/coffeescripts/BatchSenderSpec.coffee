@@ -26,11 +26,11 @@ describe "RallyMetrics.BatchSender", ->
       describe 'when a good browser', ->
         it 'should set the min length to 17,000', ->
           sender = @createSender()
-          expect(sender.minLength).to.eql(17000)
+          expect(sender.minLength).to.eql(7000)
 
         it 'should set the max length to 20,000', ->
           sender = @createSender()
-          expect(sender.maxLength).to.eql(20000)
+          expect(sender.maxLength).to.eql(8000)
 
     describe 'keysToIgnore', ->
       it "should strip out all keys in keysToIgnore", ->
