@@ -14,23 +14,13 @@ describe "RallyMetrics.BatchSender", ->
 
   describe 'config options', ->
     describe 'min and max length', ->
-      describe 'when Internet Explorer', ->
-        it 'should set the min length to 1700', ->
-          sender = @createSender(isIE: true)
-          expect(sender.minLength).to.eql(1700)
+      it 'should set the min length to 1700', ->
+        sender = @createSender()
+        expect(sender.minLength).to.eql(1700)
 
-        it 'should set the max length to 2000', ->
-          sender = @createSender(isIE: true)
-          expect(sender.maxLength).to.eql(2000)
-
-      describe 'when a good browser', ->
-        it 'should set the min length to 17,000', ->
-          sender = @createSender()
-          expect(sender.minLength).to.eql(7000)
-
-        it 'should set the max length to 20,000', ->
-          sender = @createSender()
-          expect(sender.maxLength).to.eql(8000)
+      it 'should set the max length to 2000', ->
+        sender = @createSender()
+        expect(sender.maxLength).to.eql(2000)
 
     describe 'keysToIgnore', ->
       it "should strip out all keys in keysToIgnore", ->
