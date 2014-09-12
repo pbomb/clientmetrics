@@ -95,6 +95,33 @@ describe "RallyMetrics.BatchSender", ->
       img = document.body.appendChild.args[0][0]
       expect(img.src).to.equal "#{clientMetricsUrl}?foo.0=0&foo.1=1"
 
+    describe "when an error occurs", ->
+      it "should disable sending client metrics if there is an img error", (done) ->
+        clientMetricsUrl = "http://unknownhost/to/force/an/error"
+
+        sender = @createSender(beaconUrl: clientMetricsUrl, minLength: 0)
+        data = @getData(1)
+
+        sender.send datum for datum in data
+
+        checkForDisabled = ->
+          if sender._disabled
+            done()
+          else
+            # mocha will timeout after 2 seconds, causing the test to fail
+            setTimeout(checkForDisabled, 10)
+
+        checkForDisabled()
+
+      it "should not create an img if disabled, but still purge events", ->
+        sender = @createSender(minLength: 0)
+        sender._disabled = true
+        data = @getData(1)
+        sender.send datum for datum in data
+
+        expect(document.body.appendChild).not.to.have.been.called
+        expect(sender._eventQueue.length).to.eql(0)
+
     describe "emitWarnings", ->
       beforeEach ->
         @stub(console, 'warn')

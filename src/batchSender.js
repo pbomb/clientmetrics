@@ -137,7 +137,9 @@ BatchSender.prototype._sendBatch = function(batch) {
     if (!batch) {
         return;
     }
-    this._makeGetRequest(batch.url);
+    if (!this._disabled) {
+        this._makeGetRequest(batch.url);
+    }
     this._eventQueue = _.difference(this._eventQueue, batch.events);
 };
 
@@ -150,9 +152,13 @@ BatchSender.prototype._getUrl = function() {
     return this.beaconUrl;
 };
 
+BatchSender.prototype._disableClientMetrics = function() {
+    this._disabled = true;
+};
+
 BatchSender.prototype._removeImageFromDom = function() {
     Util.removeEventHandler(this, 'load', this._imgCallback);
-    Util.removeEventHandler(this, 'error', this._imgCallback);
+    Util.removeEventHandler(this, 'error', this._imgErrback);
     Util.removeFromDom(this);
 };
 
@@ -175,8 +181,9 @@ BatchSender.prototype._makeGetRequest = function(url) {
     img.style.display = 'none';
 
     img._imgCallback = _.bind(this._removeImageFromDom, img);
+    img._imgErrback = _.bind(this._disableClientMetrics, this);
     Util.addEventHandler(img, 'load', img._imgCallback, false);
-    Util.addEventHandler(img, 'error', img._imgCallback, false);
+    Util.addEventHandler(img, 'error', img._imgErrback, false);
 
     document.body.appendChild(img);
     img.src = url;
