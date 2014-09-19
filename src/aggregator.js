@@ -45,6 +45,8 @@ var _metricsIdProperty = '__clientMetricsID__';
  *  * eDesc -- event description
  *  * cmpType -- component type
  *  * cmpId -- component ID
+ *  * uId -- user id
+ *  * sId -- subscription id
  *
  * @constructor
  * @param {Object} config Configuration object
