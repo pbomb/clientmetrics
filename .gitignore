@@ -40,3 +40,5 @@ bundle.js
 src/main.js
 test/javascripts/
 doc/
+corsSandbox/cert.pem
+corsSandbox/key.pem

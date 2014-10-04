@@ -24,6 +24,21 @@
             } else if (element.parentNode) {
                 element.parentNode.removeChild(element);
             }
+        },
+
+        createCorsXhr: function(method, url){
+            var xhr = new XMLHttpRequest();
+            if ("withCredentials" in xhr){
+                xhr.open(method, url, true);
+                xhr.setRequestHeader('Content-type','application/json; charset=utf-8');
+            } else if (typeof XDomainRequest !== "undefined"){
+                xhr = new XDomainRequest();
+                xhr.open(method, url);
+            } else {
+                xhr = null;
+            }
+
+            return xhr;
         }
     };
 
