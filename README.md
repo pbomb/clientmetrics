@@ -2,6 +2,12 @@
 
 This library allows your application to capture metrics and report them.
 
+## CORS Support ##
+
+Rally Metrics now uses CORS to send its data to the Rally beacon. The img based GETs have been completely removed, CORS is your only option.
+
+If you need to debug CORS issues, checkout the `corsSandbox/` directory and its README for more help.
+
 ## Limitations ##
 
 ### Only one beginLoad/endLoad call per object at a time is supported ###
@@ -30,9 +36,3 @@ we found it can be tough to truly know when something is done loading. The accur
 reliant on the calls being made at the correct time.
 * **Hook into data requests when possible:** Sometimes getting into the data request to set the `requester`
 property is difficult. But if it's reasonable to do it, please do. The data request client metric events are valuable.
-
-## The classes that make up the Client Metrics system ##
-
-* RallyMetrics.Aggregator
-* RallyMetrics.BatchSender
-* RallyMetrics.WindowErrorListener
