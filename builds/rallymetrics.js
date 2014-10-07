@@ -980,9 +980,24 @@ BatchSender.prototype._disableClientMetrics = function() {
     this._disabled = true;
 };
 
+/**
+ * Before CORS, the beacon GET requests meant all data was a string.
+ * We are simulating that with this method, properly handling non-string
+ * data on the backend is a decent amount of work. Hoping this method is
+ * temporary.
+ */
+BatchSender.prototype._allValuesAsStrings = function(event) {
+    return _.forIn(event, function(value, key, object) {
+        if (!_.isString(value)) {
+            object[key] = "" + value;
+        }
+    });
+};
+
 BatchSender.prototype._makePOST = function(events) {
     // from an array of individual events to an object of events with keys on them
     var data = _.reduce(events, function(data, event, index) {
+        event = this._allValuesAsStrings(event);
         return _.extend(data, this._appendIndexToKeys(event, index));
     }, {}, this);
 
@@ -998,7 +1013,7 @@ BatchSender.prototype._makePOST = function(events) {
 
 module.exports = BatchSender;
 
-},{"./util":5}],"N+UuJT":[function(require,module,exports){
+},{"./util":5}],"Qq6i9i":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"BatchSender": require ("./batchSender")
@@ -1007,7 +1022,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./batchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('N+UuJT');
+module.exports=require('Qq6i9i');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1130,6 +1145,6 @@ module.exports=require('N+UuJT');
 })();
 
 
-},{"./util":5}]},{},["N+UuJT"])
+},{"./util":5}]},{},["Qq6i9i"])
   return require('RallyMetrics');
 }));

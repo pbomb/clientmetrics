@@ -59,7 +59,7 @@ describe "RallyMetrics.BatchSender", ->
       sentData = @getSentData()
 
       for d, i in data
-        expect(sentData["foo.#{i}"]).to.equal(i)
+        expect(sentData["foo.#{i}"]).to.equal("#{i}")
 
     it "should not send a batch if the number of events is less than the minium", ->
       sender = @createSender
