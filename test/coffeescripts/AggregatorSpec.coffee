@@ -82,6 +82,19 @@ describe "RallyMetrics.Aggregator", ->
       _.find @sentEvents, (e) ->
         e.eType == 'load' && e.componentReady
 
+  describe 'useCors', ->
+    it 'should use the cors batch sender if requested', ->
+      aggregator = new RallyMetrics.Aggregator(
+        useCors: true
+      )
+
+      expect(aggregator.sender).to.be.an.instanceOf(RallyMetrics.CorsBatchSender)
+
+    it 'should default to the image batch sender', ->
+      aggregator = new RallyMetrics.Aggregator({})
+
+      expect(aggregator.sender).to.be.an.instanceOf(RallyMetrics.ImgBatchSender)
+
   describe 'flushInterval', ->
     afterEach ->
       @aggregator?.destroy()

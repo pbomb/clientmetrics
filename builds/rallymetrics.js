@@ -258,7 +258,8 @@
   var require=function(name){return {"underscore":_}[name];};
   require=(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 var _ = require('underscore');
-var BatchSender = require('./batchSender');
+var CorsBatchSender = require('./corsBatchSender');
+var ImgBatchSender = require('./imgBatchSender');
 var uuid = (window.uuid);
 
 function isIE() {
@@ -332,12 +333,15 @@ var Aggregator = function(config) {
 
     this.handlers = this.handlers || [];
 
-    this.sender = this.sender || new BatchSender({
-        keysToIgnore: [ 'cmp', 'component' ],
-        beaconUrl: config.beaconUrl,
-        emitWarnings: config.emitWarnings,
-        isIE: isIE()
-    });
+    if (!this.sender) {
+        var Sender = this.useCors ? CorsBatchSender : ImgBatchSender;
+        this.sender = new Sender({
+            keysToIgnore: [ 'cmp', 'component' ],
+            beaconUrl: config.beaconUrl,
+            emitWarnings: config.emitWarnings,
+            isIE: isIE()
+        });
+    }
 
     if (_.isFunction(this.sender.getMaxLength)) {
         this.maxErrorLength = Math.floor(this.sender.getMaxLength() * 0.9);
@@ -876,7 +880,7 @@ Aggregator.prototype._shouldRecordEvent = function(existingEvent, options) {
 
 module.exports = Aggregator;
 
-},{"./batchSender":2}],2:[function(require,module,exports){
+},{"./corsBatchSender":2,"./imgBatchSender":3}],2:[function(require,module,exports){
 
 var _ = require('underscore');
 var Util = require('./util');
@@ -899,7 +903,7 @@ var MAX_NUMBER_OF_EVENTS = 100;
  * @param {Number} [config.maxNumberOfEvents = 100] The maximum number of events for one batch
  * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
  */
-var BatchSender = function(config) {
+var CorsBatchSender = function(config) {
     _.defaults(this, config, {
         keysToIgnore: [],
         minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
@@ -910,35 +914,35 @@ var BatchSender = function(config) {
     this._eventQueue = [];
 };
 
-BatchSender.prototype.send = function(event) {
+CorsBatchSender.prototype.send = function(event) {
     this._eventQueue.push(this._cleanEvent(event));
     this._sendBatches();
 };
 
-BatchSender.prototype.flush = function() {
+CorsBatchSender.prototype.flush = function() {
     this._sendBatches({ flush: true });
 };
 
-BatchSender.prototype.getPendingEvents = function() {
+CorsBatchSender.prototype.getPendingEvents = function() {
     return this._eventQueue;
 };
 
-BatchSender.prototype.getMaxLength = function() {
+CorsBatchSender.prototype.getMaxLength = function() {
     return this.maxLength;
 };
 
-BatchSender.prototype._sendBatches = function(options) {
+CorsBatchSender.prototype._sendBatches = function(options) {
     var nextBatch;
     while ((nextBatch = this._getNextBatch(options))) {
         this._sendBatch(nextBatch);
     }
 };
 
-BatchSender.prototype._cleanEvent = function(event) {
+CorsBatchSender.prototype._cleanEvent = function(event) {
     return _.omit(event, this.keysToIgnore);
 };
 
-BatchSender.prototype._getNextBatch = function(options) {
+CorsBatchSender.prototype._getNextBatch = function(options) {
     var toBeSent = _.take(this._eventQueue, this.maxNumberOfEvents);
 
     if (toBeSent.length && (toBeSent.length >= this.minNumberOfEvents || (options && options.flush))) {
@@ -954,7 +958,7 @@ BatchSender.prototype._getNextBatch = function(options) {
  *
  * @private
  */
-BatchSender.prototype._appendIndexToKeys = function(event, index) {
+CorsBatchSender.prototype._appendIndexToKeys = function(event, index) {
     return _.transform(event, function(result, value, key) {
         result[key + '.' + index] = value;
     });
@@ -965,18 +969,18 @@ BatchSender.prototype._appendIndexToKeys = function(event, index) {
  *
  * @private
  */
-BatchSender.prototype._sendBatch = function(batch) {
+CorsBatchSender.prototype._sendBatch = function(batch) {
     if (!this._disabled) {
         this._makePOST(batch);
     }
     this._eventQueue = _.difference(this._eventQueue, batch);
 };
 
-BatchSender.prototype._getUrl = function() {
+CorsBatchSender.prototype._getUrl = function() {
     return this.beaconUrl;
 };
 
-BatchSender.prototype._disableClientMetrics = function() {
+CorsBatchSender.prototype._disableClientMetrics = function() {
     this._disabled = true;
 };
 
@@ -986,7 +990,7 @@ BatchSender.prototype._disableClientMetrics = function() {
  * data on the backend is a decent amount of work. Hoping this method is
  * temporary.
  */
-BatchSender.prototype._allValuesAsStrings = function(event) {
+CorsBatchSender.prototype._allValuesAsStrings = function(event) {
     return _.forIn(event, function(value, key, object) {
         if (!_.isString(value)) {
             object[key] = "" + value;
@@ -994,7 +998,7 @@ BatchSender.prototype._allValuesAsStrings = function(event) {
     });
 };
 
-BatchSender.prototype._makePOST = function(events) {
+CorsBatchSender.prototype._makePOST = function(events) {
     // from an array of individual events to an object of events with keys on them
     var data = _.reduce(events, function(data, event, index) {
         event = this._allValuesAsStrings(event);
@@ -1011,19 +1015,213 @@ BatchSender.prototype._makePOST = function(events) {
     }
 };
 
-module.exports = BatchSender;
+module.exports = CorsBatchSender;
 
-},{"./util":5}],"Qq6i9i":[function(require,module,exports){
+},{"./util":6}],3:[function(require,module,exports){
+var _ = require('underscore');
+var Util = require('./util');
+
+// the min and max length, in characters, that an encoded event can be.
+// Max is set to 2000 for IE since IE can only handle URLs of length ~2048
+var MIN_EVENT_LENGTH = 1700;
+var MAX_EVENT_LENGTH = 2000;
+
+/**
+ * A helper object for {@link Aggregator} whose
+ * job is to send the generated event objects in an efficient manner.
+ *
+ * It does this by batching up the requests and sends as many as it can fit into one GET
+ * request.
+ * @constructor
+ * @param {Object} config Configuration object
+ * @param {String[]} [config.keysToIgnore = new Array()] Which properties on events should not be sent
+ * @param {Number} [config.minLength = 1700] The minimum length of the generated URL that can be sent.
+ * @param {Number} [config.maxLength = 2000] The maximum length of the generated URL that can be sent.
+ * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
+ */
+var ImgBatchSender = function(config) {
+    _.defaults(this, config, {
+        keysToIgnore: [],
+        minLength: MIN_EVENT_LENGTH,
+        maxLength: MAX_EVENT_LENGTH,
+        beaconUrl: "https://trust.f4tech.com/beacon/",
+        emitWarnings: false
+    });
+    this._eventQueue = [];
+};
+
+/**
+ * Send the passed-in event.
+ * @param {object} event - The event that can be sent
+ * @public
+ */
+ImgBatchSender.prototype.send = function(event) {
+    this._eventQueue.push(this._cleanEvent(event));
+    this._sendBatches();
+};
+
+/**
+ * Send any unsent events that are not still pending.
+ * @public
+ */
+ImgBatchSender.prototype.flush = function() {
+    this._sendBatches(true);
+};
+
+/**
+ * @returns {Array} All events that have been started but not yet finished.
+ * @public
+ */
+ImgBatchSender.prototype.getPendingEvents = function() {
+    return this._eventQueue;
+};
+
+/**
+ * @returns {Number} The max length of a batch size to send
+ * @public
+ */
+ImgBatchSender.prototype.getMaxLength = function() {
+    return this.maxLength;
+};
+
+ImgBatchSender.prototype._sendBatches = function(forceIncludeAll) {
+    var nextBatch;
+    while ((nextBatch = this._getNextBatch(forceIncludeAll))) {
+        this._sendBatch(nextBatch);
+    }
+};
+
+ImgBatchSender.prototype._cleanEvent = function(event) {
+    return _.omit(event, this.keysToIgnore);
+};
+
+ImgBatchSender.prototype._getNextBatch = function(forceIncludeAll) {
+    var batchObj = {},
+        batchString,
+        toBeSent = [],
+        url = this._getUrl() + '?',
+        batchSize = 0;
+
+    _.each(this._eventQueue, function(event, currentIndex) {
+        var eventCopy = this._appendIndexToKeys(event, currentIndex),
+            possibleBatchObj = _.extend(batchObj, eventCopy),
+            possibleBatchString = url + this._toQueryString(possibleBatchObj);
+
+        ++batchSize;
+
+        if (possibleBatchString.length < this.maxLength) {
+            toBeSent.push(event);
+            batchString = possibleBatchString;
+            batchObj = possibleBatchObj;
+        } else {
+            if (batchSize === 1 && this.emitWarnings && window.console && window.console.warn) {
+                console.warn('Client metrics: an event is too big to send', event);
+            }
+            return false;
+        }
+    }, this);
+
+    if (_.isEmpty(toBeSent) || (!forceIncludeAll && batchString.length < this.minLength)) {
+        return null;
+    }
+
+    return {
+        url: batchString,
+        events: toBeSent
+    };
+};
+
+/**
+ * Appends indices to the keys of the event. This is to avoid the keys being clobbered
+ * in the GET request. For example if a GET request contains two events, then the key "start"
+ * would be in there twice (as would all the other keys), causing problems. This method
+ * adds an index to the keys causing them to be "start.0", "start.1", etc
+ * @param event
+ * @param index
+ *
+ * @private
+ */
+ImgBatchSender.prototype._appendIndexToKeys = function(event, index) {
+    return _.transform(event, function(result, value, key) {
+        result[key + '.' + index] = value;
+    });
+};
+
+/**
+ * Causes a batch to get sent out to the configured endpoint
+ *
+ * @private
+ */
+ImgBatchSender.prototype._sendBatch = function(batch) {
+    if (!batch) {
+        return;
+    }
+    if (!this._disabled) {
+        this._makeGetRequest(batch.url);
+    }
+    this._eventQueue = _.difference(this._eventQueue, batch.events);
+};
+
+/**
+ * Get the configured endpoint URL, or the default if one is not configured
+ *
+ * @private
+ */
+ImgBatchSender.prototype._getUrl = function() {
+    return this.beaconUrl;
+};
+
+ImgBatchSender.prototype._disableClientMetrics = function() {
+    this._disabled = true;
+};
+
+ImgBatchSender.prototype._removeImageFromDom = function() {
+    Util.removeEventHandler(this, 'load', this._imgCallback);
+    Util.removeEventHandler(this, 'error', this._imgErrback);
+    Util.removeFromDom(this);
+};
+
+ImgBatchSender.prototype._toQueryString = function(data) {
+    return _.map(data, function(value, key) {
+        return encodeURIComponent(key) + '=' + encodeURIComponent(value);
+    }).join('&');
+};
+
+/**
+ * the method that actually sends the GET request to the endpoint. It is done
+ * by adding an img to the DOM and its src being set to the created beaconUrl.
+ *
+ * @private
+ */
+ImgBatchSender.prototype._makeGetRequest = function(url) {
+    var img = document.createElement("img");
+    img.style.width = 0;
+    img.style.height = 0;
+    img.style.display = 'none';
+
+    img._imgCallback = _.bind(this._removeImageFromDom, img);
+    img._imgErrback = _.bind(this._disableClientMetrics, this);
+    Util.addEventHandler(img, 'load', img._imgCallback, false);
+    Util.addEventHandler(img, 'error', img._imgErrback, false);
+
+    document.body.appendChild(img);
+    img.src = url;
+};
+
+module.exports = ImgBatchSender;
+
+},{"./util":6}],"RallyMetrics":[function(require,module,exports){
+module.exports=require('N+UuJT');
+},{}],"N+UuJT":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
-	,"BatchSender": require ("./batchSender")
+	,"CorsBatchSender": require ("./corsBatchSender")
+	,"ImgBatchSender": require ("./imgBatchSender")
 	,"Util": require ("./util")
 	,"WindowErrorListener": require ("./windowErrorListener")
 }
 ;
-},{"./aggregator":1,"./batchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('Qq6i9i');
-},{}],5:[function(require,module,exports){
+},{"./aggregator":1,"./corsBatchSender":2,"./imgBatchSender":3,"./util":6,"./windowErrorListener":7}],6:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
 
@@ -1071,7 +1269,7 @@ module.exports=require('Qq6i9i');
     module.exports = Util;
 })();
 
-},{}],6:[function(require,module,exports){
+},{}],7:[function(require,module,exports){
 (function() {
     var _ = require('underscore');
     var Util = require('./util');
@@ -1145,6 +1343,6 @@ module.exports=require('Qq6i9i');
 })();
 
 
-},{"./util":5}]},{},["Qq6i9i"])
+},{"./util":6}]},{},["N+UuJT"])
   return require('RallyMetrics');
 }));

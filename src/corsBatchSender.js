@@ -20,7 +20,7 @@ var MAX_NUMBER_OF_EVENTS = 100;
  * @param {Number} [config.maxNumberOfEvents = 100] The maximum number of events for one batch
  * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
  */
-var BatchSender = function(config) {
+var CorsBatchSender = function(config) {
     _.defaults(this, config, {
         keysToIgnore: [],
         minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
@@ -31,35 +31,35 @@ var BatchSender = function(config) {
     this._eventQueue = [];
 };
 
-BatchSender.prototype.send = function(event) {
+CorsBatchSender.prototype.send = function(event) {
     this._eventQueue.push(this._cleanEvent(event));
     this._sendBatches();
 };
 
-BatchSender.prototype.flush = function() {
+CorsBatchSender.prototype.flush = function() {
     this._sendBatches({ flush: true });
 };
 
-BatchSender.prototype.getPendingEvents = function() {
+CorsBatchSender.prototype.getPendingEvents = function() {
     return this._eventQueue;
 };
 
-BatchSender.prototype.getMaxLength = function() {
+CorsBatchSender.prototype.getMaxLength = function() {
     return this.maxLength;
 };
 
-BatchSender.prototype._sendBatches = function(options) {
+CorsBatchSender.prototype._sendBatches = function(options) {
     var nextBatch;
     while ((nextBatch = this._getNextBatch(options))) {
         this._sendBatch(nextBatch);
     }
 };
 
-BatchSender.prototype._cleanEvent = function(event) {
+CorsBatchSender.prototype._cleanEvent = function(event) {
     return _.omit(event, this.keysToIgnore);
 };
 
-BatchSender.prototype._getNextBatch = function(options) {
+CorsBatchSender.prototype._getNextBatch = function(options) {
     var toBeSent = _.take(this._eventQueue, this.maxNumberOfEvents);
 
     if (toBeSent.length && (toBeSent.length >= this.minNumberOfEvents || (options && options.flush))) {
@@ -75,7 +75,7 @@ BatchSender.prototype._getNextBatch = function(options) {
  *
  * @private
  */
-BatchSender.prototype._appendIndexToKeys = function(event, index) {
+CorsBatchSender.prototype._appendIndexToKeys = function(event, index) {
     return _.transform(event, function(result, value, key) {
         result[key + '.' + index] = value;
     });
@@ -86,18 +86,18 @@ BatchSender.prototype._appendIndexToKeys = function(event, index) {
  *
  * @private
  */
-BatchSender.prototype._sendBatch = function(batch) {
+CorsBatchSender.prototype._sendBatch = function(batch) {
     if (!this._disabled) {
         this._makePOST(batch);
     }
     this._eventQueue = _.difference(this._eventQueue, batch);
 };
 
-BatchSender.prototype._getUrl = function() {
+CorsBatchSender.prototype._getUrl = function() {
     return this.beaconUrl;
 };
 
-BatchSender.prototype._disableClientMetrics = function() {
+CorsBatchSender.prototype._disableClientMetrics = function() {
     this._disabled = true;
 };
 
@@ -107,7 +107,7 @@ BatchSender.prototype._disableClientMetrics = function() {
  * data on the backend is a decent amount of work. Hoping this method is
  * temporary.
  */
-BatchSender.prototype._allValuesAsStrings = function(event) {
+CorsBatchSender.prototype._allValuesAsStrings = function(event) {
     return _.forIn(event, function(value, key, object) {
         if (!_.isString(value)) {
             object[key] = "" + value;
@@ -115,7 +115,7 @@ BatchSender.prototype._allValuesAsStrings = function(event) {
     });
 };
 
-BatchSender.prototype._makePOST = function(events) {
+CorsBatchSender.prototype._makePOST = function(events) {
     // from an array of individual events to an object of events with keys on them
     var data = _.reduce(events, function(data, event, index) {
         event = this._allValuesAsStrings(event);
@@ -132,4 +132,4 @@ BatchSender.prototype._makePOST = function(events) {
     }
 };
 
-module.exports = BatchSender;
+module.exports = CorsBatchSender;

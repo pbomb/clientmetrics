@@ -1,5 +1,6 @@
 var _ = require('underscore');
-var BatchSender = require('./batchSender');
+var CorsBatchSender = require('./corsBatchSender');
+var ImgBatchSender = require('./imgBatchSender');
 var uuid = require('node-uuid');
 
 function isIE() {
@@ -50,6 +51,7 @@ var _metricsIdProperty = '__clientMetricsID__';
  *
  * @constructor
  * @param {Object} config Configuration object
+ * @param {Boolean} [config.useCors = false] Whether to use CORS to communicate with the beacon
  * @param {Object[]} [config.ajaxProviders] Ajax providers that emit the following events:
  *   * beforerequest - When an Ajax request is about to be made
  *   * requestcomplete - When an Ajax request has finished
@@ -73,12 +75,15 @@ var Aggregator = function(config) {
 
     this.handlers = this.handlers || [];
 
-    this.sender = this.sender || new BatchSender({
-        keysToIgnore: [ 'cmp', 'component' ],
-        beaconUrl: config.beaconUrl,
-        emitWarnings: config.emitWarnings,
-        isIE: isIE()
-    });
+    if (!this.sender) {
+        var Sender = this.useCors ? CorsBatchSender : ImgBatchSender;
+        this.sender = new Sender({
+            keysToIgnore: [ 'cmp', 'component' ],
+            beaconUrl: config.beaconUrl,
+            emitWarnings: config.emitWarnings,
+            isIE: isIE()
+        });
+    }
 
     if (_.isFunction(this.sender.getMaxLength)) {
         this.maxErrorLength = Math.floor(this.sender.getMaxLength() * 0.9);

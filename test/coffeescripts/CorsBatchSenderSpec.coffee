@@ -1,9 +1,9 @@
-describe "RallyMetrics.BatchSender", ->
+describe "RallyMetrics.CorsBatchSender", ->
   Util = RallyMetrics.Util
 
   helpers
     createSender: (config={}) ->
-      new RallyMetrics.BatchSender _.defaults(config, beaconUrl: 'totallyfakeurl')
+      new RallyMetrics.CorsBatchSender _.defaults(config, beaconUrl: 'totallyfakeurl')
 
     getData: (count) ->
       ({foo: i} for i in [0...count])
