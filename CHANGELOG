@@ -1,0 +1,10 @@
+This is not a thorough change log, adding it to keep track of which versions have which BatchSenders
+
+1.2.1 -- Oct 27, 2014
+Img BatchSender removed (hopefully for good), Cors BatchSender is only sender available
+
+1.1.1 -- Oct 9, 2014
+Both Cors BatchSender and img BatchSender available, decided by the "useCors" config flag.
+
+1.0.0 -- Oct 3, 2014
+First version to have the CORS BatchSender. The img based BatchSender was completely removed

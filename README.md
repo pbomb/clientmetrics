@@ -6,7 +6,9 @@ This library allows your application to capture metrics and report them.
 
 Rally Metrics now uses CORS to send its data to the Rally beacon. The img based GETs have been completely removed, CORS is your only option.
 
-If you need to debug CORS issues, checkout the `corsSandbox/` directory and its README for more help.
+## Tiny sandbox app ##
+
+The tiny app at `corsSandbox` is meant to test CORS out easily, but it's also a nice smoketest to verify the beacon's working ok. See `corsSandbox/README.md` for more info
 
 ## Limitations ##
 

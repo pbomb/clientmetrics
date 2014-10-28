@@ -25,8 +25,7 @@ var CorsBatchSender = function(config) {
         keysToIgnore: [],
         minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
         maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
-        beaconUrl: "https://trust.f4tech.com/beacon/",
-        emitWarnings: false
+        beaconUrl: "https://trust.f4tech.com/beacon/"
     });
     this._eventQueue = [];
 };
