@@ -1,14 +1,6 @@
 var _ = require('underscore');
-var CorsBatchSender = require('./corsBatchSender');
-var ImgBatchSender = require('./imgBatchSender');
+var BatchSender = require('./corsBatchSender');
 var uuid = require('node-uuid');
-
-function isIE() {
-    var ua = navigator.userAgent.toLowerCase();
-    // MSIE = IE 6-10, Trident = IE11 (and hopefully 12...)
-    // IE11 running in a legacy/quirks/whatever mode will have MSIE in its ua
-    return ua.indexOf('msie') > -1 || ua.indexOf('trident') > -1;
-}
 
 // The default for max number of errors we will send per session.
 // In ALM, a session is started for each page visit.
@@ -51,7 +43,6 @@ var _metricsIdProperty = '__clientMetricsID__';
  *
  * @constructor
  * @param {Object} config Configuration object
- * @param {Boolean} [config.useCors = false] Whether to use CORS to communicate with the beacon
  * @param {Object[]} [config.ajaxProviders] Ajax providers that emit the following events:
  *   * beforerequest - When an Ajax request is about to be made
  *   * requestcomplete - When an Ajax request has finished
@@ -75,15 +66,10 @@ var Aggregator = function(config) {
 
     this.handlers = this.handlers || [];
 
-    if (!this.sender) {
-        var Sender = this.useCors ? CorsBatchSender : ImgBatchSender;
-        this.sender = new Sender({
-            keysToIgnore: [ 'cmp', 'component' ],
-            beaconUrl: config.beaconUrl,
-            emitWarnings: config.emitWarnings,
-            isIE: isIE()
-        });
-    }
+    this.sender = this.sender || new BatchSender({
+        keysToIgnore: [ 'cmp', 'component' ],
+        beaconUrl: config.beaconUrl
+    });
 
     if (_.isFunction(this.sender.getMaxLength)) {
         this.maxErrorLength = Math.floor(this.sender.getMaxLength() * 0.9);

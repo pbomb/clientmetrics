@@ -3,21 +3,28 @@ var static = require('node-static');
 
 var staticServer = new static.Server('../');
 
+// uncomment key and cert and provide these files to run server as https
 var sslOptions = {
-  key: fs.readFileSync('./key.pem'),
-  cert: fs.readFileSync('./cert.pem')
+  // key: fs.readFileSync('./key.pem'),
+  // cert: fs.readFileSync('./cert.pem')
 };
 
-require('https').createServer(sslOptions, function (request, response) {
+function serverHandler(request, response) {
   request.addListener('end', function() {
     staticServer.serve(request, response);
   }).resume();
-}).listen(443, function() {
-  require('http').createServer(function (request, response) {
-    request.addListener('end', function() {
-      staticServer.serve(request, response);
-    }).resume();
-  }).listen(80, function() {
-    console.log("CORS sandbox server running on port 443, https and 80, http");
-  });
+}
+
+var server = null;
+var protocol = sslOptions.key && 'https' || 'http';
+
+if (protocol === 'https') {
+  server = require('https').createServer(sslOptions, serverHandler);
+} else {
+  server = require('http').createServer(serverHandler);
+}
+
+
+server.listen(8888, function() {
+  console.log("CORS sandbox is at " + protocol + "://<hostname>:8888/corsSandbox/index.html");
 });
