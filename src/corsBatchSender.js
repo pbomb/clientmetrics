@@ -121,12 +121,16 @@ CorsBatchSender.prototype._makePOST = function(events) {
         return _.extend(data, this._appendIndexToKeys(event, index));
     }, {}, this);
 
-    var xhr = Util.createCorsXhr('POST', this.beaconUrl);
+    try {
+        var xhr = Util.createCorsXhr('POST', this.beaconUrl);
 
-    if (xhr) {
-        xhr.onerror = _.bind(this._disableClientMetrics, this);
-        xhr.send(JSON.stringify(data));
-    } else {
+        if (xhr) {
+            xhr.onerror = _.bind(this._disableClientMetrics, this);
+            xhr.send(JSON.stringify(data));
+        } else {
+            this._disableClientMetrics();
+        }
+    } catch(e) {
         this._disableClientMetrics();
     }
 };

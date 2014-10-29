@@ -102,6 +102,15 @@ describe "RallyMetrics.CorsBatchSender", ->
         expect(Util.createCorsXhr).not.to.have.been.called
         expect(sender._eventQueue.length).to.eql(0)
 
+      it "should disable client metrics if an exception is thrown", ->
+        Util.createCorsXhr.throws()
+
+        sender = @createSender(minNumberOfEvents: 0)
+        data = @getData(1)
+        sender.send datum for datum in data
+
+        expect(sender._disabled).to.be.true
+
   describe '#flush', ->
 
     it "should send a batch even though the number of events is less than the minimum", ->

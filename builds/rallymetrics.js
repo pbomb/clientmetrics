@@ -991,19 +991,23 @@ CorsBatchSender.prototype._makePOST = function(events) {
         return _.extend(data, this._appendIndexToKeys(event, index));
     }, {}, this);
 
-    var xhr = Util.createCorsXhr('POST', this.beaconUrl);
+    try {
+        var xhr = Util.createCorsXhr('POST', this.beaconUrl);
 
-    if (xhr) {
-        xhr.onerror = _.bind(this._disableClientMetrics, this);
-        xhr.send(JSON.stringify(data));
-    } else {
+        if (xhr) {
+            xhr.onerror = _.bind(this._disableClientMetrics, this);
+            xhr.send(JSON.stringify(data));
+        } else {
+            this._disableClientMetrics();
+        }
+    } catch(e) {
         this._disableClientMetrics();
     }
 };
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"N+UuJT":[function(require,module,exports){
+},{"./util":5}],"nER/y7":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1012,7 +1016,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('N+UuJT');
+module.exports=require('nER/y7');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1135,6 +1139,6 @@ module.exports=require('N+UuJT');
 })();
 
 
-},{"./util":5}]},{},["N+UuJT"])
+},{"./util":5}]},{},["nER/y7"])
   return require('RallyMetrics');
 }));
