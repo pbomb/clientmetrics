@@ -28,7 +28,7 @@ var _metricsIdProperty = '__clientMetricsID__';
  *     - Timeout: (Not yet implemented), indicates a load event took too long
  *
  *
- *  NOTE: space is an issue when sending the bundle of data out. So most properties are short acronyms:
+ *  NOTE: Most properties are short acronyms:
  *  * bts -- browser time stamp
  *  * tabId -- the browser tab ID
  *  * tId -- trace ID
