@@ -14,9 +14,9 @@
   // Node.js crypto-based RNG - http://nodejs.org/docs/v0.6.2/api/crypto.html
   //
   // Moderately fast, high quality
-  if (typeof(require) == 'function') {
+  if (typeof(_global.require) == 'function') {
     try {
-      var _rb = require('crypto').randomBytes;
+      var _rb = _global.require('crypto').randomBytes;
       _rng = _rb && function() {return _rb(16);};
     } catch(e) {}
   }
@@ -49,7 +49,7 @@
   }
 
   // Buffer class to use
-  var BufferClass = typeof(Buffer) == 'function' ? Buffer : Array;
+  var BufferClass = typeof(_global.Buffer) == 'function' ? _global.Buffer : Array;
 
   // Maps for number <-> hex string conversion
   var _byteToHex = [];
@@ -287,7 +287,7 @@ var _metricsIdProperty = '__clientMetricsID__';
  *     - Timeout: (Not yet implemented), indicates a load event took too long
  *
  *
- *  NOTE: space is an issue when sending the bundle of data out. So most properties are short acronyms:
+ *  NOTE: Most properties are short acronyms:
  *  * bts -- browser time stamp
  *  * tabId -- the browser tab ID
  *  * tId -- trace ID
@@ -740,7 +740,7 @@ Aggregator.prototype._getFromHandlers = function(cmp, methodName) {
  * @private
  */
 Aggregator.prototype._findParentId = function(sourceCmp, traceId) {
-    var hierarchy = this._getFromHandlers(sourceCmp, 'getComponentHierarchy') || [];
+    var hierarchy = this._getHierarchy(sourceCmp);
     var eventId = traceId;
 
     _.each(hierarchy, function(cmp) {
@@ -769,16 +769,29 @@ Aggregator.prototype._getComponentId = function(cmp) {
     return cmp[_metricsIdProperty];
 };
 
-Aggregator.prototype._getHierarchyString = function(cmp) {
-    var hierarchy = this._getFromHandlers(cmp, 'getComponentHierarchy');
+Aggregator.prototype._getHierarchy = function(cmp) {
+    var cmpType = this.getComponentType(cmp.singleton || cmp);
+    var hierarchy = [];
 
-    if (!hierarchy) {
+    while (cmpType) {
+        hierarchy.push(cmp);
+        cmp = cmp.clientMetricsParent || cmp.ownerCt || cmp.owner || (cmp.initialConfig && cmp.initialConfig.owner);
+        cmpType = cmp && this.getComponentType(cmp.singleton || cmp);
+    }
+
+    return hierarchy;
+};
+
+Aggregator.prototype._getHierarchyString = function(cmp) {
+    var hierarchy = this._getHierarchy(cmp);
+
+    if (hierarchy.length === 0) {
         return 'none';
     }
 
-    var names = _.map(hierarchy, this.getComponentType, this);
-
-    return _.compact(names).join(':');
+    return _.map(hierarchy, function(c) {
+      return this.getComponentType(c.singleton || c);
+    }, this).join(':');
 };
 
 /**
@@ -1007,7 +1020,7 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"nER/y7":[function(require,module,exports){
+},{"./util":5}],"Qq6i9i":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1016,7 +1029,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('nER/y7');
+module.exports=require('Qq6i9i');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1139,6 +1152,6 @@ module.exports=require('nER/y7');
 })();
 
 
-},{"./util":5}]},{},["nER/y7"])
+},{"./util":5}]},{},["Qq6i9i"])
   return require('RallyMetrics');
 }));

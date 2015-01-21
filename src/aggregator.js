@@ -481,7 +481,7 @@ Aggregator.prototype._getFromHandlers = function(cmp, methodName) {
  * @private
  */
 Aggregator.prototype._findParentId = function(sourceCmp, traceId) {
-    var hierarchy = this._getFromHandlers(sourceCmp, 'getComponentHierarchy') || [];
+    var hierarchy = this._getHierarchy(sourceCmp);
     var eventId = traceId;
 
     _.each(hierarchy, function(cmp) {
@@ -510,16 +510,29 @@ Aggregator.prototype._getComponentId = function(cmp) {
     return cmp[_metricsIdProperty];
 };
 
-Aggregator.prototype._getHierarchyString = function(cmp) {
-    var hierarchy = this._getFromHandlers(cmp, 'getComponentHierarchy');
+Aggregator.prototype._getHierarchy = function(cmp) {
+    var cmpType = this.getComponentType(cmp.singleton || cmp);
+    var hierarchy = [];
 
-    if (!hierarchy) {
+    while (cmpType) {
+        hierarchy.push(cmp);
+        cmp = cmp.clientMetricsParent || cmp.ownerCt || cmp.owner || (cmp.initialConfig && cmp.initialConfig.owner);
+        cmpType = cmp && this.getComponentType(cmp.singleton || cmp);
+    }
+
+    return hierarchy;
+};
+
+Aggregator.prototype._getHierarchyString = function(cmp) {
+    var hierarchy = this._getHierarchy(cmp);
+
+    if (hierarchy.length === 0) {
         return 'none';
     }
 
-    var names = _.map(hierarchy, this.getComponentType, this);
-
-    return _.compact(names).join(':');
+    return _.map(hierarchy, function(c) {
+      return this.getComponentType(c.singleton || c);
+    }, this).join(':');
 };
 
 /**

@@ -1,23 +1,13 @@
 uuidFormat = /[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89aAbB][a-f0-9]{3}-[a-f0-9]{12}/
 
 class Panel
-  constructor: (@parent) ->
-    @children = []
+  constructor: () ->
     @name = 'Panel'
 
   add: (config) ->
-    child = new Panel(this)
-    @children.push(child)
+    child = new Panel()
+    child.ownerCt = this
     child
-
-  getComponentHierarchy: ->
-    hierarchy = [this]
-    cmp = this
-    while cmp.parent
-      cmp = cmp.parent
-      hierarchy.push(cmp)
-
-    hierarchy
 
 describe "RallyMetrics.Aggregator", ->
   beforeEach ->
@@ -52,8 +42,6 @@ describe "RallyMetrics.Aggregator", ->
         getAppName: @stub().returns('testAppName')
         getComponentType: (cmp) ->
           if cmp.name then cmp.name else false
-        getComponentHierarchy: (cmp) ->
-          if _.isFunction(cmp.getComponentHierarchy) then cmp.getComponentHierarchy() else false
 
       aggregatorConfig = _.defaults config,
         sender: @createSender()
@@ -171,15 +159,62 @@ describe "RallyMetrics.Aggregator", ->
       dataEvent = @findDataEvent()
       expect(dataEvent.url).to.equal expectedUrl
 
-    it "should have the component hierarchy", ->
+    it "should have the component hierarchy for Ext4 nesting", ->
       aggregator = @createAggregatorAndRecordAction()
-      requester = new Panel()
+      parentPanel = new Panel()
+      childPanel = parentPanel.add(xtype: "panel")
 
-      metricsData = aggregator.beginDataRequest requester, "someUrl"
-      aggregator.endDataRequest requester, @xhrFake, metricsData.requestId
+      metricsData = aggregator.beginDataRequest childPanel, "someUrl"
+      aggregator.endDataRequest childPanel, @xhrFake, metricsData.requestId
 
       dataEvent = @findDataEvent()
-      expect(dataEvent.cmpH).to.equal "Panel"
+      expect(dataEvent.cmpH).to.equal "Panel:Panel"
+
+    it "should have the component hierarchy for Ext2 nesting", ->
+      aggregator = @createAggregatorAndRecordAction()
+      parentObj =
+        name: 'Parent'
+
+      childObj =
+        name: 'Child'
+        owner: parentObj
+
+      metricsData = aggregator.beginDataRequest childObj, "someUrl"
+      aggregator.endDataRequest childObj, @xhrFake, metricsData.requestId
+
+      dataEvent = @findDataEvent()
+      expect(dataEvent.cmpH).to.equal "Child:Parent"
+
+    it "should have the component hierarchy for initialConfig nesting", ->
+      aggregator = @createAggregatorAndRecordAction()
+      parentObj =
+        name: 'Parent'
+
+      childObj =
+        name: 'Child'
+        initialConfig:
+          owner: parentObj
+
+      metricsData = aggregator.beginDataRequest childObj, "someUrl"
+      aggregator.endDataRequest childObj, @xhrFake, metricsData.requestId
+
+      dataEvent = @findDataEvent()
+      expect(dataEvent.cmpH).to.equal "Child:Parent"
+
+    it "should have the component hierarchy for clientMetricsParent property", ->
+      aggregator = @createAggregatorAndRecordAction()
+      parentObj =
+        name: 'Parent'
+
+      childObj =
+        name: 'Child'
+        clientMetricsParent: parentObj
+
+      metricsData = aggregator.beginDataRequest childObj, "someUrl"
+      aggregator.endDataRequest childObj, @xhrFake, metricsData.requestId
+
+      dataEvent = @findDataEvent()
+      expect(dataEvent.cmpH).to.equal "Child:Parent"
 
     it "returns ID properties for AJAX headers", ->
       aggregator = @createAggregatorAndRecordAction()
@@ -332,7 +367,6 @@ describe "RallyMetrics.Aggregator", ->
 
       parentPanel = new Panel()
       childPanel = parentPanel.add(xtype: "panel")
-      @stub(handler, "getComponentHierarchy").returns [childPanel, parentPanel]
 
       @recordAction(aggregator, parentPanel)
       @recordAction(aggregator, parentPanel)
@@ -350,8 +384,6 @@ describe "RallyMetrics.Aggregator", ->
       parentPanel = new Panel()
       childPanel1 = parentPanel.add(xtype: "panel")
       childPanel2 = parentPanel.add(xtype: "panel")
-      @stub handler, "getComponentHierarchy", (cmp) ->
-        [cmp, parentPanel]
 
       @recordAction(aggregator, parentPanel)
 
