@@ -355,10 +355,16 @@ Aggregator.prototype.destroy = function() {
  * Calls a new navigation user action
  * @param status the event's status for each of the pending events
  * @param defaultParams Default parameters that are sent with each request
+ * @param defaultParams.sessionStart start time for this session - defaults 
+ *   to now, but can be set if actual start is before library is initialized
  * @public
  */
 Aggregator.prototype.startSession = function(status, defaultParams) {
     this._pendingEvents = [];
+    if (defaultParams && defaultParams.sessionStart) {
+        this._startingTime = defaultParams.sessionStart;
+        delete defaultParams.sessionStart;
+    }
     this._sessionStartTime = this._getRelativeTime();
     this.sendAllRemainingEvents();
     this._defaultParams = defaultParams;
@@ -649,6 +655,14 @@ Aggregator.prototype.sendAllRemainingEvents = function() {
 
 Aggregator.prototype.getComponentType = function(cmp) {
     return this._getFromHandlers(cmp, 'getComponentType');
+};
+
+Aggregator.prototype.getDefaultParams = function() {
+    return this._defaultParams;
+};
+
+Aggregator.prototype.getSessionStartTime = function() {
+    return this._sessionStartTime;
 };
 
 /**
@@ -1020,7 +1034,7 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"Qq6i9i":[function(require,module,exports){
+},{"./util":5}],"Y3Xuj4":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1029,7 +1043,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('Qq6i9i');
+module.exports=require('Y3Xuj4');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1152,6 +1166,6 @@ module.exports=require('Qq6i9i');
 })();
 
 
-},{"./util":5}]},{},["Qq6i9i"])
+},{"./util":5}]},{},["Y3Xuj4"])
   return require('RallyMetrics');
 }));
