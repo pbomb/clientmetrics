@@ -1034,7 +1034,7 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"Y3Xuj4":[function(require,module,exports){
+},{"./util":5}],"sOmqIC":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1043,7 +1043,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('Y3Xuj4');
+module.exports=require('sOmqIC');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1166,6 +1166,6 @@ module.exports=require('Y3Xuj4');
 })();
 
 
-},{"./util":5}]},{},["Y3Xuj4"])
+},{"./util":5}]},{},["sOmqIC"])
   return require('RallyMetrics');
 }));
