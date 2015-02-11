@@ -14,9 +14,9 @@
   // Node.js crypto-based RNG - http://nodejs.org/docs/v0.6.2/api/crypto.html
   //
   // Moderately fast, high quality
-  if (typeof(_global.require) == 'function') {
+  if (typeof(require) == 'function') {
     try {
-      var _rb = _global.require('crypto').randomBytes;
+      var _rb = require('crypto').randomBytes;
       _rng = _rb && function() {return _rb(16);};
     } catch(e) {}
   }
@@ -49,7 +49,7 @@
   }
 
   // Buffer class to use
-  var BufferClass = typeof(_global.Buffer) == 'function' ? _global.Buffer : Array;
+  var BufferClass = typeof(Buffer) == 'function' ? Buffer : Array;
 
   // Maps for number <-> hex string conversion
   var _byteToHex = [];
@@ -1020,10 +1020,11 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
     try {
         var xhr = Util.createCorsXhr('POST', this.beaconUrl);
-
         if (xhr) {
             xhr.onerror = _.bind(this._disableClientMetrics, this);
-            xhr.send(JSON.stringify(data));
+            setTimeout(function() {
+                xhr.send(JSON.stringify(data));
+            }, 0);
         } else {
             this._disableClientMetrics();
         }
@@ -1034,7 +1035,7 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"sOmqIC":[function(require,module,exports){
+},{"./util":5}],"Qq6i9i":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1043,7 +1044,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('sOmqIC');
+module.exports=require('Qq6i9i');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1075,11 +1076,15 @@ module.exports=require('sOmqIC');
 
         createCorsXhr: function(method, url){
             var xhr = new XMLHttpRequest();
-            if ("withCredentials" in xhr){
+            if ("withCredentials" in xhr) {
                 xhr.open(method, url, true);
                 xhr.setRequestHeader('Content-type','application/json; charset=utf-8');
-            } else if (typeof XDomainRequest !== "undefined"){
+            } else if (typeof XDomainRequest !== "undefined") {
                 xhr = new XDomainRequest();
+                xhr.onload = function() {};
+                xhr.onprogress = function() {};
+                xhr.ontimeout = function() {};
+
                 xhr.open(method, url);
             } else {
                 xhr = null;
@@ -1166,6 +1171,6 @@ module.exports=require('sOmqIC');
 })();
 
 
-},{"./util":5}]},{},["sOmqIC"])
+},{"./util":5}]},{},["Qq6i9i"])
   return require('RallyMetrics');
 }));

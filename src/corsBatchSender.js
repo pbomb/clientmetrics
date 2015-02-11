@@ -123,10 +123,11 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
     try {
         var xhr = Util.createCorsXhr('POST', this.beaconUrl);
-
         if (xhr) {
             xhr.onerror = _.bind(this._disableClientMetrics, this);
-            xhr.send(JSON.stringify(data));
+            setTimeout(function() {
+                xhr.send(JSON.stringify(data));
+            }, 0);
         } else {
             this._disableClientMetrics();
         }

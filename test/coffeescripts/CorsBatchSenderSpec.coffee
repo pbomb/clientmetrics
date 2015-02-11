@@ -28,7 +28,7 @@ describe "RallyMetrics.CorsBatchSender", ->
         expect(sender.maxNumberOfEvents).to.eql(100)
 
     describe 'keysToIgnore', ->
-      it "should strip out all keys in keysToIgnore", ->
+      it "should strip out all keys in keysToIgnore", (done) ->
         aKeyToIgnore = "testKey"
         anotherKeyToIgnore = "theOtherKey"
 
@@ -40,26 +40,28 @@ describe "RallyMetrics.CorsBatchSender", ->
         data[aKeyToIgnore] = "should ignore this one"
         data[anotherKeyToIgnore] = "this one too"
 
+        @mockXhr.send = (data) =>
+          sentData = JSON.parse(data)
+          expect(Object.keys(sentData).length).to.eql(1)
+          expect(sentData["foo.0"]).to.eql("bar")
+          expect(sentData["#{aKeyToIgnore}.0"]).to.be.undefined
+          expect(sentData["#{anotherKeyToIgnore}.0"]).to.be.undefined
+          done()
+
         sender.send(data)
 
-        sentData = @getSentData()
-
-        expect(Object.keys(sentData).length).to.eql(1)
-        expect(sentData["foo.0"]).to.eql("bar")
-        expect(sentData["#{aKeyToIgnore}.0"]).to.be.undefined
-        expect(sentData["#{anotherKeyToIgnore}.0"]).to.be.undefined
-
   describe '#send', ->
-    it "should append indices to the keys so they don't get clobbered", ->
+    it "should append indices to the keys so they don't get clobbered", (done) ->
       data = @getData(10)
       sender = @createSender(minNumberOfEvents: 10)
 
+      @mockXhr.send = (dataString) =>
+        sentData = JSON.parse dataString
+        for d, i in sentData
+          expect(sentData["foo.#{i}"]).to.equal("#{i}")
+        done()
+
       sender.send(datum) for datum in data
-
-      sentData = @getSentData()
-
-      for d, i in data
-        expect(sentData["foo.#{i}"]).to.equal("#{i}")
 
     it "should not send a batch if the number of events is less than the minium", ->
       sender = @createSender
