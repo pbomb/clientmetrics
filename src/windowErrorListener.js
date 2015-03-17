@@ -14,10 +14,16 @@
      * @constructor
      * @param {RallyMetrics.ClientMetricsAggregator} aggregator
      * @param {Boolean} [supportsOnError=true] Does the browser support window.onerror?
+     * @param {Object} config Configuration object
+     * @param {Number} [config.stackLimit] If defined, the stack trace for the error will be truncated to this limit
      */
-    var ErrorListener = function(aggregator, supportsOnError) {
+    var ErrorListener = function(aggregator, supportsOnError, config) {
         var useOnError = _.isBoolean(supportsOnError) ? supportsOnError : browserSupportsOnError;
         this.aggregator = aggregator;
+        this._stackLimit = null;
+        if (config && config.stackLimit) {
+            this._stackLimit = parseInt(config.stackLimit, 10);
+        }
 
         if (useOnError) {
             this._originalWindowOnError = window.onerror;
@@ -46,7 +52,10 @@
             }
 
             if (errorObject && errorObject.stack) {
-                miscData.stack = errorObject.stack.substring(0, 1000);
+                miscData.stack = errorObject.stack;
+                if (this._stackLimit) {
+                    miscData.stack = _.take(miscData.stack.split('\n'), this._stackLimit).join('\n');
+                }
             }
 
             this.aggregator.recordError(errorInfo, miscData);

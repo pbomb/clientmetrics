@@ -1,7 +1,7 @@
 describe 'RallyMetrics.WindowErrorListener', ->
   helpers
-    createListener: (supportsOnError) ->
-      new RallyMetrics.WindowErrorListener(@aggregator, supportsOnError)
+    createListener: (supportsOnError, config) ->
+      new RallyMetrics.WindowErrorListener(@aggregator, supportsOnError, config)
 
   beforeEach ->
     @originalOnError = window.onerror
@@ -33,6 +33,19 @@ describe 'RallyMetrics.WindowErrorListener', ->
     stack = 'stack trace'
     window.onerror('message', 'file.js', 22, columnNum, stack: stack)
     expect(@aggregator.recordError.getCall(1).args[1]).to.deep.equal {columnNumber: columnNum, stack: stack}
+
+  it 'should not trim stack by default', ->
+    @createListener()
+    stack = _.map(_.range(1000), -> 'this is a very long stack trace that should be preserved').join('\n')
+    window.onerror('message', 'file.js', 22, 13, stack: stack)
+    expect(@aggregator.recordError.getCall(0).args[1].stack).to.equal stack
+
+  it 'should trim stack if configured', ->
+    stackLimit = 10
+    @createListener(true, stackLimit: stackLimit)
+    stack = _.map(_.range(1000), -> 'this is a very long stack trace that should be preserved').join('\n')
+    window.onerror('message', 'file.js', 22, 13, stack: stack)
+    expect(@aggregator.recordError.getCall(0).args[1].stack).to.equal _.take(stack.split('\n'), stackLimit).join('\n')
 
   it 'should gracefully deal with no error message, file and line number', ->
     @createListener()
