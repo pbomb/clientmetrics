@@ -14,9 +14,9 @@
   // Node.js crypto-based RNG - http://nodejs.org/docs/v0.6.2/api/crypto.html
   //
   // Moderately fast, high quality
-  if (typeof(require) == 'function') {
+  if (typeof(_global.require) == 'function') {
     try {
-      var _rb = require('crypto').randomBytes;
+      var _rb = _global.require('crypto').randomBytes;
       _rng = _rb && function() {return _rb(16);};
     } catch(e) {}
   }
@@ -49,7 +49,7 @@
   }
 
   // Buffer class to use
-  var BufferClass = typeof(Buffer) == 'function' ? Buffer : Array;
+  var BufferClass = typeof(_global.Buffer) == 'function' ? _global.Buffer : Array;
 
   // Maps for number <-> hex string conversion
   var _byteToHex = [];
@@ -224,12 +224,14 @@
   uuid.unparse = unparse;
   uuid.BufferClass = BufferClass;
 
-  if (typeof define === 'function' && define.amd) {
-    // Publish as AMD module
-    define(function() {return uuid;});
-  } else if (typeof(module) != 'undefined' && module.exports) {
+  if (typeof(module) != 'undefined' && module.exports) {
     // Publish as node.js module
     module.exports = uuid;
+  } else  if (typeof define === 'function' && define.amd) {
+    // Publish as AMD module
+    define(function() {return uuid;});
+ 
+
   } else {
     // Publish as global (in browsers)
     var _previousRoot = _global.uuid;
@@ -1035,7 +1037,9 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"Qq6i9i":[function(require,module,exports){
+},{"./util":5}],"RallyMetrics":[function(require,module,exports){
+module.exports=require('qg8ou4');
+},{}],"qg8ou4":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1043,9 +1047,7 @@ module.exports = {
 	,"WindowErrorListener": require ("./windowErrorListener")
 }
 ;
-},{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('Qq6i9i');
-},{}],5:[function(require,module,exports){
+},{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
 
@@ -1114,10 +1116,16 @@ module.exports=require('Qq6i9i');
      * @constructor
      * @param {RallyMetrics.ClientMetricsAggregator} aggregator
      * @param {Boolean} [supportsOnError=true] Does the browser support window.onerror?
+     * @param {Object} config Configuration object
+     * @param {Number} [config.stackLimit] If defined, the stack trace for the error will be truncated to this limit
      */
-    var ErrorListener = function(aggregator, supportsOnError) {
+    var ErrorListener = function(aggregator, supportsOnError, config) {
         var useOnError = _.isBoolean(supportsOnError) ? supportsOnError : browserSupportsOnError;
         this.aggregator = aggregator;
+        this._stackLimit = null;
+        if (config && config.stackLimit) {
+            this._stackLimit = parseInt(config.stackLimit, 10);
+        }
 
         if (useOnError) {
             this._originalWindowOnError = window.onerror;
@@ -1146,7 +1154,10 @@ module.exports=require('Qq6i9i');
             }
 
             if (errorObject && errorObject.stack) {
-                miscData.stack = errorObject.stack.substring(0, 1000);
+                miscData.stack = errorObject.stack;
+                if (this._stackLimit) {
+                    miscData.stack = _.take(miscData.stack.split('\n'), this._stackLimit).join('\n');
+                }
             }
 
             this.aggregator.recordError(errorInfo, miscData);
@@ -1171,6 +1182,6 @@ module.exports=require('Qq6i9i');
 })();
 
 
-},{"./util":5}]},{},["Qq6i9i"])
+},{"./util":5}]},{},["qg8ou4"])
   return require('RallyMetrics');
 }));
