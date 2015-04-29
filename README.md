@@ -20,7 +20,7 @@ at a time**. If a second `beginLoad` call is sent for an object while one is cur
 ## Usage Guidelines ##
 
 Try to keep these things in mind when using client metrics:
-
+* **Loads are tied to the last action:** So it's important that an action has been called (typically based on a user aciton, such as a click) before a load begin/end is called. If not, the load will be tied to the previous action and will skew that actions total time.
 * **Be Conscise:** Keep your client metrics as simple and to the point as possible to help with data aggregation. To keep your data shorter, there are just two things to be aware of:
     * use `miscData` sparingly.
     * Make your `description` strings unique and as short as possible. Generally speaking, the description string does not need to contain the name of the component. "reload due to timebox filter change" is better than "MyDefects panel reload due to timebox filter change". The client metric system can figure out what component is involved and appends the name and type of the component to the client metrics event.
@@ -32,3 +32,4 @@ we found it can be tough to truly know when something is done loading. The accur
 reliant on the calls being made at the correct time.
 * **Hook into data requests when possible:** Sometimes getting into the data request to set the `requester`
 property is difficult. But if it's reasonable to do it, please do. The data request client metric events are valuable.
+
