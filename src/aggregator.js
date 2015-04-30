@@ -96,7 +96,7 @@ Aggregator.prototype.destroy = function() {
  * Calls a new navigation user action
  * @param status the event's status for each of the pending events
  * @param defaultParams Default parameters that are sent with each request
- * @param defaultParams.sessionStart start time for this session - defaults 
+ * @param defaultParams.sessionStart start time for this session - defaults
  *   to now, but can be set if actual start is before library is initialized
  * @public
  */
@@ -211,6 +211,64 @@ Aggregator.prototype.recordComponentReady = function(options) {
     }, options.miscData));
 
     this._finishEvent(cmpReadyEvent);
+};
+
+Aggregator.prototype.startSpan = function(options) {
+    var cmp = options.component;
+    var traceId = options.traceId || this._currentTraceId;
+
+    if (!traceId) {
+        return;
+    }
+
+    var startTime = this._getRelativeTime(options.startTime);
+
+    var eventId = this._getUniqueId();
+
+    var event = _.defaults({
+        eType: options.type || 'load',
+        cmp: cmp,
+        cmpH: this._getHierarchyString(cmp),
+        // cmpId: this._getComponentId(cmp),
+        eId: eventId,
+        cmpType: this.getComponentType(cmp),
+        tId: traceId,
+        pId: options.pId || traceId,
+        start: startTime
+    }, options.miscData);
+    if (options.description) {
+      event.eDesc = options.description;
+    }
+    return this._startEvent(event);
+};
+
+Aggregator.prototype.endSpan = function(options) {
+    var cmp = options.component;
+
+    var eventId = options.eventId;
+    delete options.eventId;
+
+    if (!eventId) {
+        // load end found without a load begin, not much can be done with it
+        return;
+    }
+
+    var event = this._findPendingEvent(eventId);
+
+    if (!event) {
+        // if we didn't find a pending event, then the load begin happened before the
+        // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
+        // just ignoring it.
+        return;
+    }
+
+    options.stop = this._getRelativeTime(options.stopTime);
+
+    if (this._shouldRecordEvent(event, options)) {
+        this._finishEvent(event, _.extend({
+            status: 'Ready'
+        }, options));
+    }
 };
 
 /**
@@ -395,7 +453,7 @@ Aggregator.prototype.sendAllRemainingEvents = function() {
 };
 
 Aggregator.prototype.getComponentType = function(cmp) {
-    return this._getFromHandlers(cmp, 'getComponentType');
+    return this._getFromHandlers(cmp.singleton || cmp, 'getComponentType');
 };
 
 Aggregator.prototype.getDefaultParams = function() {
@@ -525,13 +583,13 @@ Aggregator.prototype._getComponentId = function(cmp) {
 };
 
 Aggregator.prototype._getHierarchy = function(cmp) {
-    var cmpType = this.getComponentType(cmp.singleton || cmp);
+    var cmpType = this.getComponentType(cmp);
     var hierarchy = [];
 
     while (cmpType) {
         hierarchy.push(cmp);
         cmp = cmp.clientMetricsParent || cmp.ownerCt || cmp.owner || (cmp.initialConfig && cmp.initialConfig.owner);
-        cmpType = cmp && this.getComponentType(cmp.singleton || cmp);
+        cmpType = cmp && this.getComponentType(cmp);
     }
 
     return hierarchy;
@@ -545,7 +603,7 @@ Aggregator.prototype._getHierarchyString = function(cmp) {
     }
 
     return _.map(hierarchy, function(c) {
-      return this.getComponentType(c.singleton || c);
+      return this.getComponentType(c);
     }, this).join(':');
 };
 
