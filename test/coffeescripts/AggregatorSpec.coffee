@@ -127,12 +127,12 @@ describe "RallyMetrics.Aggregator", ->
 
       hash = "/some/hash"
       startingTime = new Date().getTime()-5000
-      defaultParams = 
+      defaultParams =
         hash: hash
         sessionStart: startingTime
 
       aggregator.startSession "Session 1", defaultParams
-      
+
       expect(aggregator.getSessionStartTime()).to.be.greaterThan 0
       expect(aggregator.getDefaultParams().sessionStart).to.equal undefined #don't keep this as a default param
 
@@ -469,6 +469,86 @@ describe "RallyMetrics.Aggregator", ->
       loadEvent = @findLoadEvent()
       expect(loadEvent.tId).to.equal(traceId)
 
+
+  describe "#startSpan", ->
+
+    beforeEach ->
+      @panel = new Panel()
+
+    it "should allow a traceId to be passed in", ->
+      traceId = uuid.v4()
+      aggregator = @createAggregator()
+
+      span = aggregator.startSpan(
+        component: @panel
+        traceId: traceId
+        description: "panel loading"
+      )
+      span.end()
+
+      loadEvent = @findLoadEvent()
+      expect(loadEvent.tId).to.equal(traceId)
+
+    it "should allow a name to be passed in", ->
+      traceId = uuid.v4()
+      aggregator = @createAggregator()
+
+      span = aggregator.startSpan(
+        component: @panel
+        name: 'foo'
+        traceId: traceId
+        description: "panel loading"
+      )
+      span.end()
+
+      loadEvent = @findLoadEvent()
+      expect(loadEvent.cmpType).to.equal('foo')
+
+    it "should allow the hierarchy to be passed in", ->
+      traceId = uuid.v4()
+      aggregator = @createAggregator()
+
+      span = aggregator.startSpan(
+        component: @panel
+        hierarchy: 'foo:bar:baz'
+        traceId: traceId
+        description: "panel loading"
+      )
+      span.end()
+
+      loadEvent = @findLoadEvent()
+      expect(loadEvent.cmpH).to.equal('foo:bar:baz')
+
+    it "should allow the parent span id to be passed in", ->
+      traceId = uuid.v4()
+      aggregator = @createAggregator()
+
+      span = aggregator.startSpan(
+        component: @panel
+        pId: 'fee-fi-fo-fum'
+        traceId: traceId
+        description: "panel loading"
+      )
+      span.end()
+
+      loadEvent = @findLoadEvent()
+      expect(loadEvent.pId).to.equal('fee-fi-fo-fum')
+
+    it "should allow the parent span id to be passed in when ending span", ->
+      traceId = uuid.v4()
+      aggregator = @createAggregator()
+
+      span = aggregator.startSpan(
+        component: @panel
+        traceId: traceId
+        description: "panel loading"
+      )
+      span.end(
+        pId: 'fee-fi-fo-fum'
+      )
+
+      loadEvent = @findLoadEvent()
+      expect(loadEvent.pId).to.equal('fee-fi-fo-fum')
 
   describe '#recordError', ->
     it "sends an error event", ->

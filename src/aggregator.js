@@ -214,6 +214,7 @@ Aggregator.prototype.recordComponentReady = function(options) {
 };
 
 Aggregator.prototype.startSpan = function(options) {
+    var aggregator = this;
     var cmp = options.component;
     var traceId = options.traceId || this._currentTraceId;
 
@@ -228,10 +229,9 @@ Aggregator.prototype.startSpan = function(options) {
     var event = _.defaults({
         eType: options.type || 'load',
         cmp: cmp,
-        cmpH: this._getHierarchyString(cmp),
-        // cmpId: this._getComponentId(cmp),
+        cmpH: options.hierarchy || this._getHierarchyString(cmp),
         eId: eventId,
-        cmpType: this.getComponentType(cmp),
+        cmpType: options.name || this.getComponentType(cmp),
         tId: traceId,
         pId: options.pId || traceId,
         start: startTime
@@ -239,36 +239,22 @@ Aggregator.prototype.startSpan = function(options) {
     if (options.description) {
       event.eDesc = options.description;
     }
-    return this._startEvent(event);
+    return {
+      data: this._startEvent(event),
+      end: function(options) {
+          options = options || {};
+          options.stop = aggregator._getRelativeTime(options.stopTime);
+
+          if (aggregator._shouldRecordEvent(this.data, options)) {
+              aggregator._finishEvent(this.data, _.extend({
+                  status: 'Ready'
+              }, options));
+          }
+      }
+    };
 };
 
 Aggregator.prototype.endSpan = function(options) {
-    var cmp = options.component;
-
-    var eventId = options.eventId;
-    delete options.eventId;
-
-    if (!eventId) {
-        // load end found without a load begin, not much can be done with it
-        return;
-    }
-
-    var event = this._findPendingEvent(eventId);
-
-    if (!event) {
-        // if we didn't find a pending event, then the load begin happened before the
-        // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
-        // just ignoring it.
-        return;
-    }
-
-    options.stop = this._getRelativeTime(options.stopTime);
-
-    if (this._shouldRecordEvent(event, options)) {
-        this._finishEvent(event, _.extend({
-            status: 'Ready'
-        }, options));
-    }
 };
 
 /**

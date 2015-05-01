@@ -224,14 +224,12 @@
   uuid.unparse = unparse;
   uuid.BufferClass = BufferClass;
 
-  if (typeof(module) != 'undefined' && module.exports) {
-    // Publish as node.js module
-    module.exports = uuid;
-  } else  if (typeof define === 'function' && define.amd) {
+  if (typeof define === 'function' && define.amd) {
     // Publish as AMD module
     define(function() {return uuid;});
- 
-
+  } else if (typeof(module) != 'undefined' && module.exports) {
+    // Publish as node.js module
+    module.exports = uuid;
   } else {
     // Publish as global (in browsers)
     var _previousRoot = _global.uuid;
@@ -357,7 +355,7 @@ Aggregator.prototype.destroy = function() {
  * Calls a new navigation user action
  * @param status the event's status for each of the pending events
  * @param defaultParams Default parameters that are sent with each request
- * @param defaultParams.sessionStart start time for this session - defaults 
+ * @param defaultParams.sessionStart start time for this session - defaults
  *   to now, but can be set if actual start is before library is initialized
  * @public
  */
@@ -472,6 +470,50 @@ Aggregator.prototype.recordComponentReady = function(options) {
     }, options.miscData));
 
     this._finishEvent(cmpReadyEvent);
+};
+
+Aggregator.prototype.startSpan = function(options) {
+    var aggregator = this;
+    var cmp = options.component;
+    var traceId = options.traceId || this._currentTraceId;
+
+    if (!traceId) {
+        return;
+    }
+
+    var startTime = this._getRelativeTime(options.startTime);
+
+    var eventId = this._getUniqueId();
+
+    var event = _.defaults({
+        eType: options.type || 'load',
+        cmp: cmp,
+        cmpH: options.hierarchy || this._getHierarchyString(cmp),
+        eId: eventId,
+        cmpType: options.name || this.getComponentType(cmp),
+        tId: traceId,
+        pId: options.pId || traceId,
+        start: startTime
+    }, options.miscData);
+    if (options.description) {
+      event.eDesc = options.description;
+    }
+    return {
+      data: this._startEvent(event),
+      end: function(options) {
+          options = options || {};
+          options.stop = aggregator._getRelativeTime(options.stopTime);
+
+          if (aggregator._shouldRecordEvent(this.data, options)) {
+              aggregator._finishEvent(this.data, _.extend({
+                  status: 'Ready'
+              }, options));
+          }
+      }
+    };
+};
+
+Aggregator.prototype.endSpan = function(options) {
 };
 
 /**
@@ -656,7 +698,7 @@ Aggregator.prototype.sendAllRemainingEvents = function() {
 };
 
 Aggregator.prototype.getComponentType = function(cmp) {
-    return this._getFromHandlers(cmp, 'getComponentType');
+    return this._getFromHandlers(cmp.singleton || cmp, 'getComponentType');
 };
 
 Aggregator.prototype.getDefaultParams = function() {
@@ -786,13 +828,13 @@ Aggregator.prototype._getComponentId = function(cmp) {
 };
 
 Aggregator.prototype._getHierarchy = function(cmp) {
-    var cmpType = this.getComponentType(cmp.singleton || cmp);
+    var cmpType = this.getComponentType(cmp);
     var hierarchy = [];
 
     while (cmpType) {
         hierarchy.push(cmp);
         cmp = cmp.clientMetricsParent || cmp.ownerCt || cmp.owner || (cmp.initialConfig && cmp.initialConfig.owner);
-        cmpType = cmp && this.getComponentType(cmp.singleton || cmp);
+        cmpType = cmp && this.getComponentType(cmp);
     }
 
     return hierarchy;
@@ -806,7 +848,7 @@ Aggregator.prototype._getHierarchyString = function(cmp) {
     }
 
     return _.map(hierarchy, function(c) {
-      return this.getComponentType(c.singleton || c);
+      return this.getComponentType(c);
     }, this).join(':');
 };
 
@@ -1037,9 +1079,7 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('qg8ou4');
-},{}],"qg8ou4":[function(require,module,exports){
+},{"./util":5}],"sOmqIC":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1047,7 +1087,9 @@ module.exports = {
 	,"WindowErrorListener": require ("./windowErrorListener")
 }
 ;
-},{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],5:[function(require,module,exports){
+},{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
+module.exports=require('sOmqIC');
+},{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
 
@@ -1182,6 +1224,6 @@ module.exports = {
 })();
 
 
-},{"./util":5}]},{},["qg8ou4"])
+},{"./util":5}]},{},["sOmqIC"])
   return require('RallyMetrics');
 }));
