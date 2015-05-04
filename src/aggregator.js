@@ -126,13 +126,13 @@ Aggregator.prototype.recordAction = function(options) {
     var action = this._startEvent(_.defaults({
         eType: 'action',
         cmp: cmp,
-        cmpH: this._getHierarchyString(cmp),
+        cmpH: options.hierarchy || this._getHierarchyString(cmp),
         eDesc: options.description,
         cmpId: this._getComponentId(cmp),
         eId: traceId,
         tId: traceId,
         status: 'Ready',
-        cmpType: this.getComponentType(cmp),
+        cmpType: options.name || this.getComponentType(cmp),
         start: startTime,
         stop: startTime
     }, options.miscData));
