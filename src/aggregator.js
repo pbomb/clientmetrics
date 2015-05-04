@@ -187,7 +187,7 @@ Aggregator.prototype.recordComponentReady = function(options) {
 
     var traceId = options.traceId || this._currentTraceId;
     var cmp = options.component,
-        cmpHierarchy = this._getHierarchyString(cmp);
+        cmpHierarchy = options.hierarchy || this._getHierarchyString(cmp);
 
     var seenThisComponentAlready = this._loadedComponents.indexOf(cmpHierarchy) > -1;
 
@@ -204,7 +204,7 @@ Aggregator.prototype.recordComponentReady = function(options) {
         eId: this._getUniqueId(),
         tId: traceId,
         pId: traceId,
-        cmpType: this.getComponentType(cmp),
+        cmpType: options.name || this.getComponentType(cmp),
         cmpH: cmpHierarchy,
         eDesc: 'component ready',
         componentReady: true
