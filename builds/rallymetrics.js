@@ -224,12 +224,14 @@
   uuid.unparse = unparse;
   uuid.BufferClass = BufferClass;
 
-  if (typeof define === 'function' && define.amd) {
-    // Publish as AMD module
-    define(function() {return uuid;});
-  } else if (typeof(module) != 'undefined' && module.exports) {
+  if (typeof(module) != 'undefined' && module.exports) {
     // Publish as node.js module
     module.exports = uuid;
+  } else  if (typeof define === 'function' && define.amd) {
+    // Publish as AMD module
+    define(function() {return uuid;});
+ 
+
   } else {
     // Publish as global (in browsers)
     var _previousRoot = _global.uuid;
@@ -327,7 +329,8 @@ var Aggregator = function(config) {
 
     this.sender = this.sender || new BatchSender({
         keysToIgnore: [ 'cmp', 'component' ],
-        beaconUrl: config.beaconUrl
+        beaconUrl: config.beaconUrl,
+        disableSending: config.disableSending
     });
 
     if (_.isFunction(this.sender.getMaxLength)) {
@@ -963,11 +966,15 @@ var MAX_NUMBER_OF_EVENTS = 100;
  */
 var CorsBatchSender = function(config) {
     _.defaults(this, config, {
+        _disabled: false,
         keysToIgnore: [],
         minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
         maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
         beaconUrl: "https://trust.f4tech.com/beacon/"
     });
+    if (config.disableSending) {
+        this._disableClientMetrics();
+    }
     this._eventQueue = [];
 };
 
@@ -1041,6 +1048,10 @@ CorsBatchSender.prototype._disableClientMetrics = function() {
     this._disabled = true;
 };
 
+CorsBatchSender.prototype.isDisabled = function() {
+    return this._disabled;
+};
+
 /**
  * Before CORS, the beacon GET requests meant all data was a string.
  * We are simulating that with this method, properly handling non-string
@@ -1079,7 +1090,7 @@ CorsBatchSender.prototype._makePOST = function(events) {
 
 module.exports = CorsBatchSender;
 
-},{"./util":5}],"sOmqIC":[function(require,module,exports){
+},{"./util":5}],"Qq6i9i":[function(require,module,exports){
 module.exports = {
 	"Aggregator": require ("./aggregator")
 	,"CorsBatchSender": require ("./corsBatchSender")
@@ -1088,7 +1099,7 @@ module.exports = {
 }
 ;
 },{"./aggregator":1,"./corsBatchSender":2,"./util":5,"./windowErrorListener":6}],"RallyMetrics":[function(require,module,exports){
-module.exports=require('sOmqIC');
+module.exports=require('Qq6i9i');
 },{}],5:[function(require,module,exports){
 (function(){
     var _ = require('underscore');
@@ -1224,6 +1235,6 @@ module.exports=require('sOmqIC');
 })();
 
 
-},{"./util":5}]},{},["sOmqIC"])
+},{"./util":5}]},{},["Qq6i9i"])
   return require('RallyMetrics');
 }));

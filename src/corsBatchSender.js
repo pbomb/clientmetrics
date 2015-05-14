@@ -22,11 +22,15 @@ var MAX_NUMBER_OF_EVENTS = 100;
  */
 var CorsBatchSender = function(config) {
     _.defaults(this, config, {
+        _disabled: false,
         keysToIgnore: [],
         minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
         maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
         beaconUrl: "https://trust.f4tech.com/beacon/"
     });
+    if (config.disableSending) {
+        this._disableClientMetrics();
+    }
     this._eventQueue = [];
 };
 
@@ -98,6 +102,10 @@ CorsBatchSender.prototype._getUrl = function() {
 
 CorsBatchSender.prototype._disableClientMetrics = function() {
     this._disabled = true;
+};
+
+CorsBatchSender.prototype.isDisabled = function() {
+    return this._disabled;
 };
 
 /**

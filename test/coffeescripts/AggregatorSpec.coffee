@@ -76,6 +76,11 @@ describe "RallyMetrics.Aggregator", ->
 
       expect(aggregator.sender).to.be.an.instanceOf(RallyMetrics.CorsBatchSender)
 
+  it 'should disable the batch sender if configured', ->
+    aggregator = new RallyMetrics.Aggregator(disableSending: true)
+
+    expect(aggregator.sender.isDisabled()).to.be.true
+
   describe 'flushInterval', ->
     afterEach ->
       @aggregator?.destroy()
