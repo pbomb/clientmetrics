@@ -83,6 +83,20 @@ describe "RallyMetrics.CorsBatchSender", ->
       expect(Util.createCorsXhr.args[0][0]).to.eql("POST")
       expect(Util.createCorsXhr.args[0][1]).to.eql(clientMetricsUrl)
 
+    it "should disable sending client metrics if configured", ->
+      sender = @createSender(disableSending: true, minNumberOfEvents: 0)
+      expect(sender.isDisabled()).to.be.true
+      sender.send({})
+      expect(Util.createCorsXhr).not.to.have.been.called
+
+    it "should not make a request if disabled, but still purge events", ->
+      sender = @createSender(disableSending: true, minNumberOfEvents: 0)
+      data = @getData(1)
+      sender.send datum for datum in data
+
+      expect(Util.createCorsXhr).not.to.have.been.called
+      expect(sender._eventQueue.length).to.eql(0)
+
     describe "when an error occurs", ->
       it "should disable sending client metrics if there is a POST error", ->
         clientMetricsUrl = "http://unknownhost/to/force/an/error"
@@ -91,18 +105,9 @@ describe "RallyMetrics.CorsBatchSender", ->
         sender.send({})
 
         expect(@mockXhr.onerror).to.be.a("function")
-        expect(sender._disabled).to.be.undefined
+        expect(sender.isDisabled()).to.be.false
         @mockXhr.onerror()
-        expect(sender._disabled).to.be.true
-
-      it "should not make a request if disabled, but still purge events", ->
-        sender = @createSender(minNumberOfEvents: 0)
-        sender._disabled = true
-        data = @getData(1)
-        sender.send datum for datum in data
-
-        expect(Util.createCorsXhr).not.to.have.been.called
-        expect(sender._eventQueue.length).to.eql(0)
+        expect(sender.isDisabled()).to.be.true
 
       it "should disable client metrics if an exception is thrown", ->
         Util.createCorsXhr.throws()
@@ -111,7 +116,7 @@ describe "RallyMetrics.CorsBatchSender", ->
         data = @getData(1)
         sender.send datum for datum in data
 
-        expect(sender._disabled).to.be.true
+        expect(sender.isDisabled()).to.be.true
 
   describe '#flush', ->
 
