@@ -99,6 +99,28 @@ describe "RallyMetrics.Aggregator", ->
         expect(stop - start).to.be.greaterThan 20
         done()
 
+  describe '#addHandler', ->
+    afterEach ->
+      @aggregator?.destroy()
+
+    it 'should add handler with NO index specified', ->
+      @aggregator = @createAggregator()
+      newHandler = {foo: 'bar'}
+
+      @aggregator.addHandler newHandler
+
+      expect(@aggregator.handlers.length).to.equal 2
+      expect(@aggregator.handlers[1]).to.equal newHandler
+
+    it 'should add handler at specified index', ->
+      @aggregator = @createAggregator()
+      newHandler = {foo: 'bar'}
+
+      @aggregator.addHandler newHandler, 0
+
+      expect(@aggregator.handlers.length).to.equal 2
+      expect(@aggregator.handlers[0]).to.equal newHandler
+
   describe '#startSession', ->
     it "should start a new session", ->
       aggregator = @createAggregator()
