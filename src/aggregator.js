@@ -452,6 +452,18 @@ Aggregator.prototype.getSessionStartTime = function() {
 };
 
 /**
+ * Add a handler
+ * @param {Object} handler The new handler
+ * @param {Number} index The index to insert the new handler in the handlers collection.
+ * If not specified it will be added to the end.
+ * @public
+ */
+Aggregator.prototype.addHandler = function(handler, index) {
+    var insertIndex = arguments.length === 2 ? index : this.handlers.length;
+    this.handlers.splice(insertIndex, 0, handler);
+};
+
+/**
  * Creates a version 4 UUID
  * @private
  */
