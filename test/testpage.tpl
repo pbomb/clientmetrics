@@ -48,6 +48,7 @@
   <script>
     mocha.setup('bdd');
     mocha.checkLeaks();
+    mocha.globals(['addEventListener']);
   </script>
 
   <!-- Vendor files -->
@@ -55,15 +56,9 @@
   <script src="node_modules/chai/chai.js"></script>
   <script src="node_modules/sinon/pkg/sinon.js"></script>
   <script src="node_modules/sinon-chai/lib/sinon-chai.js"></script>
-  <script src="node_modules/lodash/dist/lodash.compat.js"></script>
   <script src="test/support/when.js"></script>
 
-  <!-- Src files -->
-  <script src="builds/rallymetrics.js"></script>
-  
-  <!-- Test files -->
-  __helperFiles__
-  __specFiles__
+  <script src="test/rallymetrics-test.js"></script>
 
   <script type="text/javascript">
       setTimeout(function() {

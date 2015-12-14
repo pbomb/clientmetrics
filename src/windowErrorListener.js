@@ -1,81 +1,54 @@
-(function() {
-    var _ = require('underscore');
-    var Util = require('./util');
+/**
+ * @class RallyMetrics.WindowErrorListener
+ * A component that listens for unhandled errors and generates a message for them.
+ *
+ * This is used by client metrics to send client side errors to the beacon
+ * @constructor
+ * @param {RallyMetrics.ClientMetricsAggregator} aggregator
+ * @param {Object} config Configuration object
+ * @param {Number} [config.stackLimit] If defined, the stack trace for the error will be truncated to this limit
+ */
+class ErrorListener {
+  constructor(aggregator, supportsOnError, config) {
+    this.aggregator = aggregator;
+    this._stackLimit = null;
+    if (config && config.stackLimit) {
+      this._stackLimit = parseInt(config.stackLimit, 10);
+    }
 
-    var browserSupportsOnError = true;
-    var errorTpl = _.template("<%= message %>, <%= filename %>:<%= lineNumber %>");
-    var unhandledErrorTpl = _.template("onerror::<%= message %>, <%= filename %>:<%= lineNumber %>");
+    this._originalWindowOnError = window.onerror;
+    window.onerror = this._onWindowError.bind(this);
+  }
 
-    /**
-     * @class RallyMetrics.WindowErrorListener
-     * A component that listens for unhandled errors and generates a message for them.
-     *
-     * This is used by client metrics to send client side errors to the beacon
-     * @constructor
-     * @param {RallyMetrics.ClientMetricsAggregator} aggregator
-     * @param {Boolean} [supportsOnError=true] Does the browser support window.onerror?
-     * @param {Object} config Configuration object
-     * @param {Number} [config.stackLimit] If defined, the stack trace for the error will be truncated to this limit
-     */
-    var ErrorListener = function(aggregator, supportsOnError, config) {
-        var useOnError = _.isBoolean(supportsOnError) ? supportsOnError : browserSupportsOnError;
-        this.aggregator = aggregator;
-        this._stackLimit = null;
-        if (config && config.stackLimit) {
-            this._stackLimit = parseInt(config.stackLimit, 10);
-        }
+  _onWindowError(msg, filename, lineno, colno, errorObject) {
+    if (errorObject && errorObject.message) {
+      return this.aggregator.recordError(errorObject);
+    }
+    if (typeof this._originalWindowOnError === 'function') {
+      this._originalWindowOnError.call(window, msg, filename, lineno);
+    }
 
-        if (useOnError) {
-            this._originalWindowOnError = window.onerror;
-            window.onerror = _.bind(this._windowOnError, this);
-        } else {
-            Util.addEventHandler(window, 'error', _.bind(this._onUnhandledError, this), false);
-        }
-    };
+    const colIsNumber = !!colno;
+    const message = msg || 'unknown message';
+    const file = filename || '??';
+    const lineNumber = lineno ? `:${lineno}` : '';
+    const columnNumber = colIsNumber ? `:${colno}` : '';
+    const errorInfo = `${message}, ${file}${lineNumber}${columnNumber}`;
+    const miscData = {};
 
-    _.extend(ErrorListener.prototype, {
+    if (colIsNumber) {
+      miscData.columnNumber = colno;
+    }
 
-        _windowOnError: function(message, filename, lineNum, columnNum, errorObject) {
-            if (_.isFunction(this._originalWindowOnError)) {
-                this._originalWindowOnError.call(window, message, filename, lineNum);
-            }
+    if (errorObject && errorObject.stack) {
+      miscData.stack = errorObject.stack;
+      if (this._stackLimit) {
+        miscData.stack = miscData.stack.split('\n').slice(0, this._stackLimit).join('\n');
+      }
+    }
 
-            var errorInfo = errorTpl({
-                message: message || 'unknown message',
-                filename: filename || '??',
-                lineNumber: _.isNumber(lineNum) ? lineNum : '??'
-            });
+    this.aggregator.recordError(errorInfo, miscData);
+  }
+}
 
-            var miscData = {};
-            if (columnNum) {
-                miscData.columnNumber = columnNum;
-            }
-
-            if (errorObject && errorObject.stack) {
-                miscData.stack = errorObject.stack;
-                if (this._stackLimit) {
-                    miscData.stack = _.take(miscData.stack.split('\n'), this._stackLimit).join('\n');
-                }
-            }
-
-            this.aggregator.recordError(errorInfo, miscData);
-        },
-
-        _onUnhandledError: function(evt) {
-            var errorInfo;
-            if (evt.browserEvent) {
-                errorInfo = unhandledErrorTpl({
-                    message: evt.browserEvent.message || 'unknown message',
-                    filename: evt.browserEvent.filename || '??',
-                    lineNumber: evt.browserEvent.lineno || '??'
-                });
-            } else {
-                errorInfo = 'onerror::' + (evt.message || 'unknown error');
-            }
-            this.aggregator.recordError(errorInfo);
-        }
-    });
-
-    module.exports = ErrorListener;
-})();
-
+export default ErrorListener;
