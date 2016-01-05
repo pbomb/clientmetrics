@@ -1,50 +1,62 @@
-(function(){
-    var _ = require('underscore');
+const emptyFn = () => {};
 
-    var Util = {
-        addEventHandler: function(target, eventName, callback, bubble) {
-            if (target.addEventListener) {
-                target.addEventListener(eventName, callback, bubble);
-            } else if (target.attachEvent) {
-                target.attachEvent('on' + eventName, callback);
-            }
-        },
+export const createCorsXhr = (method, url) => {
+  let xhr = new XMLHttpRequest();
+  if ("withCredentials" in xhr) {
+    xhr.open(method, url, true);
+    xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
+  } else if (typeof XDomainRequest !== "undefined") {
+    xhr = new XDomainRequest();
+    xhr.onload = emptyFn;
+    xhr.onprogress = emptyFn;
+    xhr.ontimeout = emptyFn;
 
-        removeEventHandler: function(target, eventName, callback) {
-            if (target.removeEventListener) {
-                target.removeEventListener(eventName, callback);
-            } else if (target.detachEvent) {
-                target.detachEvent('on' + eventName, callback);
-            }
-        },
+    xhr.open(method, url);
+  } else {
+    xhr = null;
+  }
 
-        removeFromDom: function(element) {
-            if (_.isFunction(element.remove)) {
-                element.remove();
-            } else if (element.parentNode) {
-                element.parentNode.removeChild(element);
-            }
-        },
+  return xhr;
+};
 
-        createCorsXhr: function(method, url){
-            var xhr = new XMLHttpRequest();
-            if ("withCredentials" in xhr) {
-                xhr.open(method, url, true);
-                xhr.setRequestHeader('Content-type','application/json; charset=utf-8');
-            } else if (typeof XDomainRequest !== "undefined") {
-                xhr = new XDomainRequest();
-                xhr.onload = function() {};
-                xhr.onprogress = function() {};
-                xhr.ontimeout = function() {};
 
-                xhr.open(method, url);
-            } else {
-                xhr = null;
-            }
+export const omit = (obj, ...fields) => {
+  if (!obj) { return {}; }
+  return keys(obj).reduce((acc, key) => {
+    if (fields.indexOf(key) === -1) {
+      acc[key] = obj[key];
+    }
+    return acc;
+  }, {});
+};
 
-            return xhr;
-        }
-    };
+export const assign = (dest, ...sources) => {
+  sources.forEach((source) => {
+    if (typeof source !== 'object') {
+      return;
+    }
+    keys(source).forEach((key) => {
+      dest[key] = source[key];
+    });
+  });
+  return dest;
+};
 
-    module.exports = Util;
-})();
+export const keys = (obj) => {
+  const keys = [];
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      keys.push(key);
+    }
+  }
+  return keys;
+};
+
+export const forEach = (arr, fn) => {
+  for (let i = 0; i < arr.length; i++) {
+    const result = fn(arr[i]);
+    if (result === false) {
+      return;
+    }
+  }
+};

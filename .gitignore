@@ -27,6 +27,7 @@
 .redcar
 .settings
 .tmp*
+builds
 classes
 lib
 out
@@ -37,8 +38,8 @@ node_modules/
 .grunt/
 _SpecRunner.html
 bundle.js
-src/main.js
-test/javascripts/
+test/rallymetrics-test*
 doc/
 corsSandbox/cert.pem
 corsSandbox/key.pem
+webpack-stats.json
