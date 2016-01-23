@@ -150,25 +150,22 @@ class Aggregator {
     this.sender = this.sender || new BatchSender({
       keysToIgnore: [ 'cmp', 'component' ],
       beaconUrl: config.beaconUrl,
-      disableSending: config.disableSending
+      disableSending: config.disableSending,
+      onSend: () => this._onSend()
     });
 
     if (typeof this.sender.getMaxLength === 'function') {
       this.maxErrorLength = Math.floor(this.sender.getMaxLength() * 0.9);
     }
 
-    if (this.flushInterval) {
-      this._flushIntervalId = window.setInterval(() => this.sendAllRemainingEvents(), this.flushInterval);
-    }
+    this._setInterval();
   }
 
   /**
    * @public
    */
   destroy() {
-    if (this._flushIntervalId) {
-      window.clearInterval(this._flushIntervalId);
-    }
+    this._clearInterval();
   }
 
   /**
@@ -562,6 +559,23 @@ class Aggregator {
    */
   getUnrelativeTime(timestamp) {
     return timestamp + this._startingTime;
+  }
+
+  _clearInterval() {
+    if (this._flushIntervalId) {
+      window.clearInterval(this._flushIntervalId);
+    }
+  }
+
+  _setInterval() {
+    if (this.flushInterval) {
+      this._flushIntervalId = window.setInterval(() => this.sendAllRemainingEvents(), this.flushInterval);
+    }
+  }
+
+  _onSend() {
+    this._clearInterval();
+    this._setInterval();
   }
 
   /**

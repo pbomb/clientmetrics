@@ -45,7 +45,8 @@ class CorsBatchSender {
       keysToIgnore: [],
       minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
       maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
-      beaconUrl: "https://trust.f4tech.com/beacon/"
+      beaconUrl: "https://trust.f4tech.com/beacon/",
+      onSend: () => {}
     }, config);
 
     if (this.disableSending) {
@@ -94,6 +95,7 @@ class CorsBatchSender {
    */
   _sendBatch(batch) {
     if (!this._disabled) {
+      this.onSend(batch);
       this._makePOST(batch);
     }
     this._eventQueue = this._eventQueue.filter(ev => batch.indexOf(ev) === -1);
