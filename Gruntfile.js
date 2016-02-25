@@ -12,7 +12,6 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-text-replace');
   grunt.loadNpmTasks('grunt-open');
   grunt.loadNpmTasks('grunt-release');
-  grunt.loadTasks('grunt/tasks');
   grunt.registerTask('default', ['ci']);
   grunt.registerTask('ci', 'Runs everything: cleans and runs the tests', ['clean', 'test:setup', 'mocha']);
   grunt.registerTask('test', 'Does the test setup and runs the tests in the default browser. Use --browser=<other> to run in a different browser, and --port=<port> for a different port.', ['test:setup', 'mocha']);

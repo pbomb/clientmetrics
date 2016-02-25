@@ -748,15 +748,35 @@ describe("Aggregator", () => {
         component: panel
       });
       expect(sentEvents.length).to.equal(0);
+      expect(findComponentReadyEvent()).to.be.undefined;
     });
-    it("should record component ready even if there is not a current trace", () => {
+    it("should not record a component ready if there is a session but no action", () => {
       startSession(aggregator);
       aggregator.recordComponentReady({
         component: panel
       });
-      const componentReadyEvent = findComponentReadyEvent();
+      expect(sentEvents.length).to.equal(0);
+      expect(findComponentReadyEvent()).to.be.undefined;
+    });
+    it("should not record a component ready if a session is started, an action is recorded, a new sesson is started, but an action does not follow the new session", () => {
+      startSession(aggregator);
+      recordAction(aggregator, panel);
+      startSession(aggregator);
+      aggregator.recordComponentReady({
+        component: panel
+      });
       expect(sentEvents.length).to.equal(1);
-      expect(componentReadyEvent.tId).to.be.undefined;
+      expect(findComponentReadyEvent()).to.be.undefined;
+    });
+    it("should record a component ready if there is a session followed by an action", () => {
+      startSession(aggregator);
+      recordAction(aggregator, panel);
+      aggregator.recordComponentReady({
+        component: panel
+      });
+      const componentReadyEvent = findComponentReadyEvent();
+      expect(sentEvents.length).to.equal(2);
+      expect(componentReadyEvent.eType).to.equal("load");
       expect(componentReadyEvent.componentReady).to.equal(true);
     });
     it("should record the traceId if one is present", () => {
@@ -774,62 +794,30 @@ describe("Aggregator", () => {
       expect(componentReadyEvent.pId).to.equal(actionEvent.eId);
       expect(componentReadyEvent.componentReady).to.equal(true);
     });
-    it("should record a start time equal to the session start time", () => {
+    it("should record a start time equal to the action start time", () => {
       startSession(aggregator);
+      recordAction(aggregator, panel);
       aggregator.recordComponentReady({
         component: panel
       });
 
       const componentReadyEvent = findComponentReadyEvent();
-      expect(sentEvents.length).to.equal(1);
+      expect(sentEvents.length).to.equal(2);
       expect(componentReadyEvent.start).to.be.a('number');
-      expect(componentReadyEvent.start).to.equal(aggregator._sessionStartTime);
+      expect(componentReadyEvent.start).to.equal(aggregator._actionStartTime);
       expect(componentReadyEvent.stop).to.be.a('number');
       expect(componentReadyEvent.componentReady).to.equal(true);
     });
-    it("should record a component as ready only once per session", () => {
+    it("should record component as ready multiple times per session", () => {
       startSession(aggregator);
+      recordAction(aggregator, panel);
       aggregator.recordComponentReady({
         component: panel
       });
       aggregator.recordComponentReady({
         component: panel
       });
-      const componentReadyEvent = findComponentReadyEvent();
-      expect(sentEvents.length).to.equal(1);
-      expect(componentReadyEvent.eType).to.equal("load");
-      expect(componentReadyEvent.componentReady).to.equal(true);
-    });
-    it("should ignore a second component's ready if it has the same hierarchy as the previous component", () => {
-      startSession(aggregator);
-      aggregator.recordComponentReady({
-        component: panel
-      });
-      aggregator.recordComponentReady({
-        component: new Panel()
-      });
-      expect(sentEvents.length).to.equal(1);
-      const componentReadyEvent = findComponentReadyEvent();
-      expect(componentReadyEvent.eType).to.equal("load");
-      expect(componentReadyEvent.componentReady).to.equal(true);
-    });
-    it("should record a component as ready a second time if a new session started", () => {
-      startSession(aggregator);
-      aggregator.recordComponentReady({
-        component: panel
-      });
-      aggregator.recordComponentReady({
-        component: panel
-      });
-      startSession(aggregator);
-      aggregator.recordComponentReady({
-        component: panel
-      });
-      expect(sentEvents.length).to.equal(2);
-      expect(sentEvents[0].eType).to.equal("load");
-      expect(sentEvents[1].eType).to.equal("load");
-      expect(sentEvents[0].componentReady).to.equal(true);
-      expect(sentEvents[1].componentReady).to.equal(true);
+      expect(sentEvents.length).to.equal(3);
     });
   });
   describe("#getRallyRequestId", () => {
