@@ -195,14 +195,6 @@ describe("Aggregator", () => {
     });
   });
   describe('#startSession', () => {
-    it("should start a new session", () => {
-      const aggregator = createAggregator();
-      const status = 'Navigation';
-      const defaultParams = {
-        foo: 'bar'
-      };
-      return startSession(aggregator, status, defaultParams);
-    });
     it("should flush the sender", () => {
       const aggregator = createAggregator();
       startSession(aggregator);
@@ -473,7 +465,6 @@ describe("Aggregator", () => {
   describe('finding traceIDs', () => {
     it("should find the correct traceId", () => {
       const aggregator = createAggregator();
-      const handler = aggregator.handlers[0];
       const parentPanel = new Panel();
       const childPanel = parentPanel.add({
         xtype: "panel"
@@ -488,7 +479,6 @@ describe("Aggregator", () => {
     });
     it("should not parent to an event that has completed", () => {
       const aggregator = createAggregator();
-      const handler = aggregator.handlers[0];
       const parentPanel = new Panel();
       const childPanel1 = parentPanel.add({
         xtype: "panel"
@@ -540,7 +530,7 @@ describe("Aggregator", () => {
     });
     it("should use the passed-in startTime", () => {
       const aggregator = createAggregator();
-      const traceId = aggregator.recordAction({
+      aggregator.recordAction({
         component: {},
         description: "an action",
         startTime: 100
@@ -674,7 +664,7 @@ describe("Aggregator", () => {
         errorMessages.push(recordError(aggregator));
       }
       expect(sentEvents.length).to.equal(4);
-      const ref = sentEvents.slice(1).forEach((errorEvent, i) => {
+      sentEvents.slice(1).forEach((errorEvent, i) => {
         expect(errorEvent.error).to.equal("an error");
         expect(errorEvent.stack).to.equal(limitStack(errorMessages[i].stack, 10));
       });
@@ -820,6 +810,29 @@ describe("Aggregator", () => {
       expect(sentEvents.length).to.equal(3);
     });
   });
+
+  describe('#getCurrentTraceId', () => {
+    it("should return null if no actions have been recorded", () => {
+      const aggregator = createAggregator();
+      expect(aggregator.getCurrentTraceId()).to.be.null;
+    });
+
+    it("should return the traceId of the most recently recorded action", () => {
+      const aggregator = createAggregator();
+      const firstTraceId = aggregator.recordAction({
+        component: {},
+        description: "an action"
+      });
+      expect(aggregator.getCurrentTraceId()).to.equal(firstTraceId);
+
+      const secondTraceId = aggregator.recordAction({
+        component: {},
+        description: "an action"
+      });
+      expect(aggregator.getCurrentTraceId()).to.equal(secondTraceId);
+    });
+  });
+
   describe("#getRallyRequestId", () => {
     it("should find the RallyRequestId on an object", () => {
       const response = {
