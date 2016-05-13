@@ -17,11 +17,6 @@ const getData = (count) => {
   return results;
 };
 
-const getSentData = (callIndex = 0) => {
-  const sentJson = mockXhr.send.args[callIndex][0];
-  return JSON.parse(sentJson);
-};
-
 describe("CorsBatchSender", () => {
 
   beforeEach(() => {
@@ -88,7 +83,7 @@ describe("CorsBatchSender", () => {
         }
         done();
       };
-      const results = data.map(datum => sender.send(datum));
+      data.map(datum => sender.send(datum));
     });
 
     it("should not send a batch if the number of events is less than the minium", () => {
