@@ -137,6 +137,7 @@ class Aggregator {
     this._pendingEvents = [];
     this._browserTabId = getUniqueId();
     this._startingTime = Date.now();
+    this._currentTraceId = null;
 
     // keep track of how many errors we have reported on, so we
     // can stop after a while and not flood the beacon
@@ -527,6 +528,10 @@ class Aggregator {
 
   getSessionStartTime() {
     return this._sessionStartTime;
+  }
+
+  getCurrentTraceId() {
+    return this._currentTraceId;
   }
 
   /**

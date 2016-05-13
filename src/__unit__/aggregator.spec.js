@@ -810,6 +810,29 @@ describe("Aggregator", () => {
       expect(sentEvents.length).to.equal(3);
     });
   });
+
+  describe('#getCurrentTraceId', () => {
+    it("should return null if no actions have been recorded", () => {
+      const aggregator = createAggregator();
+      expect(aggregator.getCurrentTraceId()).to.be.null;
+    });
+
+    it("should return the traceId of the most recently recorded action", () => {
+      const aggregator = createAggregator();
+      const firstTraceId = aggregator.recordAction({
+        component: {},
+        description: "an action"
+      });
+      expect(aggregator.getCurrentTraceId()).to.equal(firstTraceId);
+
+      const secondTraceId = aggregator.recordAction({
+        component: {},
+        description: "an action"
+      });
+      expect(aggregator.getCurrentTraceId()).to.equal(secondTraceId);
+    });
+  });
+
   describe("#getRallyRequestId", () => {
     it("should find the RallyRequestId on an object", () => {
       const response = {
