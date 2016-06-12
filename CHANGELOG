@@ -1,13 +1,18 @@
 This is not a thorough change log, adding it to keep track of which versions have which BatchSenders
 
+5.0.0 -- June, 2016
+- Reset flush interval when batches are sent
+- Default flush interval to 10 seconds
+- Default error stack trace limit to 20 lines
+
 1.3.0 -- Jan 21, 2015
-Internalizes logic to get component hierarchy handling Ext2, Ext4 and clientMetricsParent property
+- Internalizes logic to get component hierarchy handling Ext2, Ext4 and clientMetricsParent property
 
 1.2.1 -- Oct 27, 2014
-Img BatchSender removed (hopefully for good), Cors BatchSender is only sender available
+- Img BatchSender removed (hopefully for good), Cors BatchSender is only sender available
 
 1.1.1 -- Oct 9, 2014
-Both Cors BatchSender and img BatchSender available, decided by the "useCors" config flag.
+- Both Cors BatchSender and img BatchSender available, decided by the "useCors" config flag.
 
 1.0.0 -- Oct 3, 2014
-First version to have the CORS BatchSender. The img based BatchSender was completely removed
+- First version to have the CORS BatchSender. The img based BatchSender was completely removed
