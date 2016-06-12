@@ -169,6 +169,7 @@ describe("Aggregator", () => {
       });
     });
   });
+
   describe('#addHandler', () => {
     afterEach(() => {
       if (aggregator) {
@@ -194,6 +195,7 @@ describe("Aggregator", () => {
       expect(aggregator.handlers[0]).to.equal(newHandler);
     });
   });
+  
   describe('#startSession', () => {
     it("should flush the sender", () => {
       const aggregator = createAggregator();
@@ -638,12 +640,12 @@ describe("Aggregator", () => {
       expect(errorEvent.error).to.equal(errorMessage.message);
     });
 
-    it("limits the stack to 10 lines by default", () => {
+    it("limits the stack to 20 lines by default", () => {
       const aggregator = createAggregatorAndRecordAction();
       const errorMessage = recordError(aggregator);
       const errorEvent = findErrorEvent();
 
-      expect(errorEvent.stack).to.equal(limitStack(errorMessage.stack, 10));
+      expect(errorEvent.stack).to.equal(limitStack(errorMessage.stack, 20));
     });
 
     it("limits the stack to 2 lines when configured", () => {
@@ -666,7 +668,7 @@ describe("Aggregator", () => {
       expect(sentEvents.length).to.equal(4);
       sentEvents.slice(1).forEach((errorEvent, i) => {
         expect(errorEvent.error).to.equal("an error");
-        expect(errorEvent.stack).to.equal(limitStack(errorMessages[i].stack, 10));
+        expect(errorEvent.stack).to.equal(limitStack(errorMessages[i].stack, 20));
       });
     });
 

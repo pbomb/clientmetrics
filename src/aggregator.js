@@ -3,11 +3,10 @@ import { assign, forEach, omit } from './util';
 import uuid from 'uuid';
 
 // The default for max number of errors we will send per session.
-// In ALM, a session is started for each page visit.
 const DEFAULT_ERROR_LIMIT = 25;
 
 // The default number of lines to keep in error stack traces
-const DEFAULT_STACK_LIMIT = 10;
+const DEFAULT_STACK_LIMIT = 20;
 
 // bookkeeping properties that are set on components being measured
 const _currentEventId = '__clientMetricsCurrentEventId__';
@@ -123,9 +122,6 @@ export const getRallyRequestId = (response) => {
  *
  * @constructor
  * @param {Object} config Configuration object
- * @param {Object[]} [config.ajaxProviders] Ajax providers that emit the following events:
- *   * beforerequest - When an Ajax request is about to be made
- *   * requestcomplete - When an Ajax request has finished
  * @param {Object} [config.sender = BatchSender] Which sender to use. By default,
  *   a BatchSender will be used.
  * @param {Number} [config.flushInterval] If defined, events will be sent at least that often.
@@ -534,13 +530,16 @@ class Aggregator {
   /**
    * Add a handler
    * @param {Object} handler The new handler
-   * @param {Number} index The index to insert the new handler in the handlers collection.
+   * @param {Number} [index] The index to insert the new handler in the handlers collection.
    * If not specified it will be added to the end.
    * @public
    */
   addHandler(handler, index) {
-    const insertIndex = arguments.length === 2 ? index : this.handlers.length;
-    this.handlers.splice(insertIndex, 0, handler);
+    if (arguments.length === 2) {
+      this.handlers.splice(index, 0, handler);
+    } else {
+      this.handlers.push(handler);
+    }
   }
 
   /**
