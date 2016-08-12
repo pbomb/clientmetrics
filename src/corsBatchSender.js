@@ -122,7 +122,20 @@ class CorsBatchSender {
 
     try {
       const xhr = createCorsXhr('POST', this.beaconUrl);
+
       if (xhr) {
+        xhr.onreadystatechange = () => {
+          if (xhr.readyState === XMLHttpRequest.DONE) {
+            if (this._xhrCallback) {
+              const eIds = events.map(function(event) {
+                return event.eId;
+              });
+
+              this._xhrCallback(xhr.status, eIds);
+            }
+          }
+        };
+
         xhr.onerror = this._disableClientMetrics.bind(this);
         setTimeout(() => xhr.send(JSON.stringify(data)), 0);
       } else {
