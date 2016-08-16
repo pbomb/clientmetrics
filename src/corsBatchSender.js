@@ -53,6 +53,7 @@ class CorsBatchSender {
       this._disableClientMetrics();
     }
     this._eventQueue = [];
+    this._xhrCallbacks = {};
   }
 
   send(event) {
@@ -126,13 +127,13 @@ class CorsBatchSender {
       if (xhr) {
         xhr.onreadystatechange = () => {
           if (xhr.readyState === XMLHttpRequest.DONE) {
-            if (this._xhrCallback) {
-              const eIds = events.map(function(event) {
-                return event.eId;
-              });
+            const eIds = events.map(function(event) {
+              return event.eId;
+            });
 
-              this._xhrCallback(xhr.status, eIds);
-            }
+            Object.values(this._xhrCallbacks).forEach(function(xhrCallback) {
+              xhrCallback(xhr.status, eIds);
+            });
           }
         };
 

@@ -511,9 +511,15 @@ class Aggregator {
     this.sender.flush();
   }
 
-  setBatchCallback(xhrCallback) {
+  addBatchCallback(key, xhrCallback) {
     if (xhrCallback) {
-      this.sender._xhrCallback = xhrCallback;
+      this.sender._xhrCallbacks[key] = xhrCallback;
+    }
+  }
+
+  removeBatchCallback(key) {
+    if (this.sender._xhrCallbacks[key]) {
+      delete this.sender._xhrCallbacks[key];
     }
   }
 
