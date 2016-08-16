@@ -131,9 +131,9 @@ class CorsBatchSender {
               return event.eId;
             });
 
-            Object.values(this._xhrCallbacks).forEach(function(xhrCallback) {
-              xhrCallback(xhr.status, eIds);
-            });
+            for (let key in this._xhrCallbacks) {
+              this._xhrCallbacks[key](xhr.status, eIds);
+            }
           }
         };
 
