@@ -511,6 +511,18 @@ class Aggregator {
     this.sender.flush();
   }
 
+  addBatchCallback(key, xhrCallback) {
+    if (xhrCallback) {
+      this.sender._xhrCallbacks[key] = xhrCallback;
+    }
+  }
+
+  removeBatchCallback(key) {
+    if (this.sender._xhrCallbacks[key]) {
+      delete this.sender._xhrCallbacks[key];
+    }
+  }
+
   getComponentType(cmp) {
     return this._getFromHandlers(cmp.singleton || cmp, 'getComponentType');
   }
