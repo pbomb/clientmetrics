@@ -195,7 +195,7 @@ describe("Aggregator", () => {
       expect(aggregator.handlers[0]).to.equal(newHandler);
     });
   });
-  
+
   describe('#startSession', () => {
     it("should flush the sender", () => {
       const aggregator = createAggregator();
@@ -654,6 +654,16 @@ describe("Aggregator", () => {
       const errorEvent = findErrorEvent();
 
       expect(errorEvent.stack).to.equal(limitStack(errorMessage.stack, 2));
+    });
+
+    it("filters stacks that match ignoreStackMatcher", () => {
+      const ignoreStackMatcher = /recordError/;
+      const aggregator = createAggregatorAndRecordAction({ ignoreStackMatcher });
+
+      recordError(aggregator);
+      const errorEvent = findErrorEvent();
+
+      expect(ignoreStackMatcher.test(errorEvent.stack)).to.equal(false);
     });
 
     it("does not create an error event if the error limit has been reached", () => {

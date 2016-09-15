@@ -120,6 +120,12 @@ export const getRallyRequestId = (response) => {
  *  * uId -- user id
  *  * sId -- subscription id
  *
+ * Config options:
+ *  * stackLimit - maximum number of stack trace lines recorded when an error occurs
+ *  * ignoreStackMatcher - stack trace lines that match this regex are ignored,
+ *    use this option when the relevant stack trace lines don't fit within stackLimit,
+ *    for example to ignore stack lines from within React: `ignoreStackMatcher = /(getNativeNode|updateChildren|updateComponent|receiveComponent)/`
+ *
  * @constructor
  * @param {Object} config Configuration object
  * @param {Object} [config.sender = BatchSender] Which sender to use. By default,
@@ -228,7 +234,7 @@ class Aggregator {
       error = e.message;
     }
     error = error.substring(0, this.maxErrorLength || Infinity);
-    const stack = e.stack ? e.stack.split('\n').slice(0, this.stackLimit).join('\n') : miscData.stack;
+    const stack = this._getFilteredStackTrace(e, miscData);
     const traceId = this._currentTraceId;
 
     if (traceId && this._errorCount < this.errorLimit) {
@@ -558,6 +564,14 @@ class Aggregator {
    */
   getUnrelativeTime(timestamp) {
     return timestamp + this._startingTime;
+  }
+
+  _getFilteredStackTrace(e, miscData = {}) {
+    const stackList = (e.stack || miscData.stack || '').split('\n');
+    const filteredStack = this.ignoreStackMatcher ?
+      stackList.filter(stack => !this.ignoreStackMatcher.test(stack)) :
+      stackList;
+    return filteredStack.slice(0, this.stackLimit).join('\n');
   }
 
   _clearInterval() {
