@@ -6,11 +6,11 @@
   "scripts": {
     "lint": "eslint src",
     "docs": "grunt jsdoc",
-    "test": "npm run webpack:test && grunt test",
-    "webpack": "webpack --progress --config webpack.dev.config.js && webpack --progress --config webpack.prod.config.js && webpack --progress --config webpack.sdk.config.js",
-    "webpack:test": "webpack --debug --progress --config webpack.test.config.js",
+    "test": "npm run build:test && grunt test",
+    "build": "webpack --progress --config webpack.dev.config.js && webpack --progress --config webpack.prod.config.js && webpack --progress --config webpack.sdk.config.js",
+    "build:test": "webpack --debug --progress --config webpack.test.config.js",
     "webpack:analyze": "webpack --debug --progress --config webpack.dev.config.js --json > webpack-stats.json",
-    "prepublish": "npm run webpack && npm run test && npm run docs"
+    "prepublish": "npm run build && npm run test && npm run docs"
   },
   "repository": {
     "type": "git",
@@ -65,9 +65,7 @@
     "node-static": "^0.7.6",
     "sinon": "1.17.3",
     "sinon-chai": "2.8.0",
-    "uuid": "2.0.2",
-    "webpack": "1.13.1",
-    "when": "3.7.7"
+    "webpack": "1.13.1"
   },
   "dependencies": {
     "uuid": "3.0.1",

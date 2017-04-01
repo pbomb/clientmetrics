@@ -33,3 +33,6 @@ reliant on the calls being made at the correct time.
 * **Hook into data requests when possible:** Sometimes getting into the data request to set the `requester`
 property is difficult. But if it's reasonable to do it, please do. The data request client metric events are valuable.
 
+## Contributing to RallyMetrics
+
+See [Contributing](./CONTRIBUTING.md)
