@@ -1453,9 +1453,9 @@ eslint-config-rally@4.0.0:
   version "4.0.0"
   resolved "http://npm.f4tech.com/artifactory/api/npm/rally-npm/eslint-config-rally/-/eslint-config-rally-4.0.0.tgz#6e0dcca0822eb5a31c0c89106ea75dd7f93bfc7d"
 
-eslint-plugin-jasmine@1.8.1:
-  version "1.8.1"
-  resolved "http://npm.f4tech.com/artifactory/api/npm/rally-npm/eslint-plugin-jasmine/-/eslint-plugin-jasmine-1.8.1.tgz#b22d75e63d42da8d9898d13b1e40d42a6d0c2a95"
+eslint-plugin-jasmine@2.2.0:
+  version "2.2.0"
+  resolved "http://npm.f4tech.com/artifactory/api/npm/rally-npm/eslint-plugin-jasmine/-/eslint-plugin-jasmine-2.2.0.tgz#7135879383c39a667c721d302b9f20f0389543de"
 
 eslint-plugin-json@1.2.0:
   version "1.2.0"

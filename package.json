@@ -46,7 +46,7 @@
     "chai": "3.5.0",
     "eslint": "3.19.0",
     "eslint-config-rally": "4.0.0",
-    "eslint-plugin-jasmine": "1.8.1",
+    "eslint-plugin-jasmine": "2.2.0",
     "eslint-plugin-json": "1.2.0",
     "eslint-plugin-rally": "1.2.5",
     "eslint-plugin-react": "6.10.3",
