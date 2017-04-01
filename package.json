@@ -70,8 +70,8 @@
     "when": "3.7.7"
   },
   "dependencies": {
-    "uuid": "^2.0.1",
-    "when": "~2.7.0"
+    "uuid": "3.0.1",
+    "when": "3.7.8"
   },
   "publishConfig": {
     "registry": "http://npm-publish.f4tech.com"
