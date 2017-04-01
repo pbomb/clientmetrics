@@ -1,28 +1,13 @@
-const emptyFn = () => {};
-
 export const createCorsXhr = (method, url) => {
-  let xhr = new XMLHttpRequest();
-  if ("withCredentials" in xhr) {
-    xhr.open(method, url, true);
-    xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
-  } else if (typeof XDomainRequest !== "undefined") {
-    xhr = new XDomainRequest();
-    xhr.onload = emptyFn;
-    xhr.onprogress = emptyFn;
-    xhr.ontimeout = emptyFn;
-
-    xhr.open(method, url);
-  } else {
-    xhr = null;
-  }
-
+  const xhr = new XMLHttpRequest();
+  xhr.open(method, url, true);
+  xhr.setRequestHeader('Content-type', 'application/json; charset=utf-8');
   return xhr;
 };
 
-
-export const omit = (obj, ...fields) => {
+export const omit = (obj, fields) => {
   if (!obj) { return {}; }
-  return keys(obj).reduce((acc, key) => {
+  return Object.keys(obj).reduce((acc, key) => {
     if (fields.indexOf(key) === -1) {
       acc[key] = obj[key];
     }
@@ -35,21 +20,11 @@ export const assign = (dest, ...sources) => {
     if (typeof source !== 'object') {
       return;
     }
-    keys(source).forEach((key) => {
+    Object.keys(source).forEach((key) => {
       dest[key] = source[key];
     });
   });
   return dest;
-};
-
-export const keys = (obj) => {
-  const keys = [];
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      keys.push(key);
-    }
-  }
-  return keys;
 };
 
 export const forEach = (arr, fn) => {

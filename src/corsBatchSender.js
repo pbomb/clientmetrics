@@ -3,8 +3,16 @@ import { createCorsXhr } from './util';
 
 // the min and max number of events to put into one batch. Since we are now
 // using POSTs, we have a lot more room.
-const MIN_NUMBER_OF_EVENTS = 25;
+const MIN_NUMBER_OF_EVENTS = 40;
 const MAX_NUMBER_OF_EVENTS = 100;
+
+const defaultConfig = {
+  keysToIgnore: [],
+  minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
+  maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
+  beaconUrl: "https://trust.f4tech.com/beacon/",
+  onSend: () => {}
+};
 
 /**
  * Appends indices to the keys of the event. This is to avoid the keys being clobbered
@@ -25,6 +33,9 @@ const appendIndexToKeys = (event, index) => {
   }, {});
 };
 
+const useRequestIdle = (callback) => window.requestIdleCallback(callback, 1000);
+const useSetTimeout = (callback) => window.setTimeout(callback, 1000);
+
 /**
  * A helper object for {@link Aggregator} whose
  * job is to send the generated event objects in an efficient manner.
@@ -34,21 +45,18 @@ const appendIndexToKeys = (event, index) => {
  * @constructor
  * @param {Object} config Configuration object
  * @param {String[]} [config.keysToIgnore = new Array()] Which properties on events should not be sent
- * @param {Number} [config.minNumberOfEvents = 25] The minimum number of events for one batch
+ * @param {Number} [config.minNumberOfEvents = 40] The minimum number of events for one batch
  * @param {Number} [config.maxNumberOfEvents = 100] The maximum number of events for one batch
  * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
+ * @param {Function} [config.sendDeferred] Function that calls passed-in callback function, possibly asyncronously
  */
-class CorsBatchSender {
+export default class CorsBatchSender {
   constructor(config) {
-    assign(this, {
-      _disabled: false,
-      keysToIgnore: [],
-      minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
-      maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
-      beaconUrl: "https://trust.f4tech.com/beacon/",
-      onSend: () => {}
-    }, config);
+    this._disableClientMetrics = this._disableClientMetrics.bind(this);
+    this.sendDeferred = typeof window.requestIdleCallback === 'function' ? useRequestIdle : useSetTimeout;
+    assign(this, defaultConfig, config);
 
+    this._disabled = false;
     if (this.disableSending) {
       this._disableClientMetrics();
     }
@@ -81,11 +89,13 @@ class CorsBatchSender {
   }
 
   _getNextBatch(options = {}) {
-    const toBeSent = this._eventQueue.slice(0, this.maxNumberOfEvents);
-
-    if (toBeSent.length && (toBeSent.length >= this.minNumberOfEvents || (options.flush))) {
-      return toBeSent;
+    if (
+      this._eventQueue.length === 0 ||
+      (this._eventQueue.length < this.minNumberOfEvents && !options.flush)
+    ) {
+      return null;
     }
+    return this._eventQueue.splice(0, this.maxNumberOfEvents);
   }
 
   /**
@@ -96,13 +106,8 @@ class CorsBatchSender {
   _sendBatch(batch) {
     if (!this._disabled) {
       this.onSend(batch);
-      this._makePOST(batch);
+      this.sendDeferred(() => this._makePOST(batch));
     }
-    this._eventQueue = this._eventQueue.filter(ev => batch.indexOf(ev) === -1);
-  }
-
-  _getUrl() {
-    return this.beaconUrl;
   }
 
   _disableClientMetrics() {
@@ -116,15 +121,15 @@ class CorsBatchSender {
   _makePOST(events) {
     // from an array of individual events to an object of events with keys on them
     const data = events.reduce((data, event, index) => {
-      const eventToSend = appendIndexToKeys(omit(event, ...this.keysToIgnore), index);
-      return assign({}, data, eventToSend);
+      const eventToSend = appendIndexToKeys(omit(event, this.keysToIgnore), index);
+      return assign(data, eventToSend);
     }, {});
 
     try {
       const xhr = createCorsXhr('POST', this.beaconUrl);
       if (xhr) {
-        xhr.onerror = this._disableClientMetrics.bind(this);
-        setTimeout(() => xhr.send(JSON.stringify(data)), 0);
+        xhr.onerror = this._disableClientMetrics;
+        xhr.send(JSON.stringify(data));
       } else {
         this._disableClientMetrics();
       }
@@ -133,5 +138,3 @@ class CorsBatchSender {
     }
   }
 }
-
-export default CorsBatchSender;

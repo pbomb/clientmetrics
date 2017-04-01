@@ -94,7 +94,7 @@ export const getRallyRequestId = (response) => {
  * the message bus and creates a cohesive picture of what is happening, then pushes
  * this data out to an endpoint which collects the data for analysis
  *
- * ##Aggregator specific terminology##
+ * ## Aggregator specific terminology
  *
  * * **event:** A distinct, measurable thing that the page did or the user invoked. For example, clicking on a button,
  * a panel loading, or a grid resorting are all events
@@ -135,6 +135,8 @@ export const getRallyRequestId = (response) => {
  */
 class Aggregator {
   constructor(config) {
+    this.sendAllRemainingEvents = this.sendAllRemainingEvents.bind(this);
+    this._onSend = this._onSend.bind(this);
     assign(this, config);
     this._pendingEvents = [];
     this._browserTabId = getUniqueId();
@@ -153,7 +155,7 @@ class Aggregator {
       keysToIgnore: [ 'cmp', 'component' ],
       beaconUrl: config.beaconUrl,
       disableSending: config.disableSending,
-      onSend: () => this._onSend()
+      onSend: this._onSend
     });
 
     if (typeof this.sender.getMaxLength === 'function') {
@@ -181,17 +183,14 @@ class Aggregator {
    *   to now, but can be set if actual start is before library is initialized
    * @public
    */
-  startSession(status, defaultParams) {
-    if (arguments.length < 2) {
-      defaultParams = status;
-    }
+  startSession(status, defaultParams = {}) {
     this._pendingEvents = [];
     if (defaultParams && defaultParams.sessionStart) {
       this._startingTime = defaultParams.sessionStart;
     }
     this._sessionStartTime = this.getRelativeTime();
     this.sendAllRemainingEvents();
-    this._defaultParams = omit(defaultParams, 'sessionStart');
+    this._defaultParams = omit(defaultParams, ['sessionStart']);
 
     this._errorCount = 0;
     delete this._actionStartTime;
@@ -330,7 +329,7 @@ class Aggregator {
         options.stop = this.getRelativeTime(options.stopTime);
 
         if (this._shouldRecordEvent(data, options)) {
-          const newEventData = assign({ status: 'Ready' }, omit(options, 'stopTime'));
+          const newEventData = assign({ status: 'Ready' }, omit(options, ['stopTime']));
           this._finishEvent(data, newEventData);
         }
       }
@@ -361,7 +360,7 @@ class Aggregator {
 
     const startTime = this.getRelativeTime(options.startTime);
 
-  const eventId = getUniqueId();
+    const eventId = getUniqueId();
     cmp[_currentEventId + 'load'] = eventId;
 
     const event = assign({}, options.miscData, {
@@ -411,7 +410,7 @@ class Aggregator {
     options.stop = this.getRelativeTime(options.stopTime);
 
     if (this._shouldRecordEvent(event, options)) {
-      const newEventData = assign({ status: 'Ready' }, omit(options, 'stopTime'));
+      const newEventData = assign({ status: 'Ready' }, omit(options, ['stopTime']));
       this._finishEvent(event, newEventData);
     }
   }
@@ -582,7 +581,7 @@ class Aggregator {
 
   _setInterval() {
     if (this.flushInterval) {
-      this._flushIntervalId = window.setInterval(() => this.sendAllRemainingEvents(), this.flushInterval);
+      this._flushIntervalId = window.setInterval(this.sendAllRemainingEvents, this.flushInterval);
     }
   }
 

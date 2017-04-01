@@ -32,9 +32,9 @@ describe("CorsBatchSender", () => {
 
   describe('config options', () => {
     describe('min and max number of events', () => {
-      it('should set the min number to 25', () => {
+      it('should set the min number to 40', () => {
         const sender = createSender();
-        expect(sender.minNumberOfEvents).to.equal(25);
+        expect(sender.minNumberOfEvents).to.equal(40);
       });
 
       it('should set the max number of events to 100', () => {
@@ -73,7 +73,8 @@ describe("CorsBatchSender", () => {
     it("should append indices to the keys so they don't get clobbered", (done) => {
       const data = getData(10);
       const sender = createSender({
-        minNumberOfEvents: 10
+        minNumberOfEvents: 10,
+        sendDeferred: (callback) => callback(),
       });
       mockXhr.send = (dataString) => {
         const sentData = JSON.parse(dataString);
@@ -86,9 +87,10 @@ describe("CorsBatchSender", () => {
       data.map(datum => sender.send(datum));
     });
 
-    it("should not send a batch if the number of events is less than the minium", () => {
+    it("should not send a batch if the number of events is less than the minimum", () => {
       const sender = createSender({
-        minNumberOfEvents: 1000
+        minNumberOfEvents: 1000,
+        sendDeferred: (callback) => callback(),
       });
       const data = getData(2);
       data.forEach(datum => sender.send(datum));
@@ -100,7 +102,8 @@ describe("CorsBatchSender", () => {
       const clientMetricsUrl = "http://localhost/testing";
       const sender = createSender({
         beaconUrl: clientMetricsUrl,
-        minNumberOfEvents: 2
+        minNumberOfEvents: 2,
+        sendDeferred: (callback) => callback(),
       });
       const data = getData(2);
       data.forEach(datum => sender.send(datum));
@@ -111,7 +114,8 @@ describe("CorsBatchSender", () => {
     it("should disable sending client metrics if configured", () => {
       const sender = createSender({
         disableSending: true,
-        minNumberOfEvents: 0
+        minNumberOfEvents: 0,
+        sendDeferred: (callback) => callback(),
       });
       expect(sender.isDisabled()).to.be.true;
       sender.send({});
@@ -121,7 +125,8 @@ describe("CorsBatchSender", () => {
     it("should not make a request if disabled, but still purge events", () => {
       const sender = createSender({
         disableSending: true,
-        minNumberOfEvents: 0
+        minNumberOfEvents: 0,
+        sendDeferred: (callback) => callback(),
       });
       const data = getData(1);
       data.forEach(datum => sender.send(datum));
@@ -134,7 +139,8 @@ describe("CorsBatchSender", () => {
         const clientMetricsUrl = "http://unknownhost/to/force/an/error";
         const sender = createSender({
           beaconUrl: clientMetricsUrl,
-          minNumberOfEvents: 0
+          minNumberOfEvents: 0,
+          sendDeferred: (callback) => callback(),
         });
         sender.send({});
         expect(mockXhr.onerror).to.be.a("function");
@@ -146,7 +152,8 @@ describe("CorsBatchSender", () => {
       it("should disable client metrics if an exception is thrown", () => {
         Util.createCorsXhr.throws();
         const sender = createSender({
-          minNumberOfEvents: 0
+          minNumberOfEvents: 0,
+          sendDeferred: (callback) => callback(),
         });
         const data = getData(1);
         data.forEach(datum => sender.send(datum));
@@ -160,7 +167,8 @@ describe("CorsBatchSender", () => {
       const clientMetricsUrl = "http://localhost/testing";
       const sender = createSender({
         beaconUrl: clientMetricsUrl,
-        minNumberOfEvents: 1000
+        minNumberOfEvents: 1000,
+        sendDeferred: (callback) => callback(),
       });
       const data = getData(2);
       data.forEach(datum => sender.send(datum));
