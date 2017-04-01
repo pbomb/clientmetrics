@@ -720,7 +720,7 @@ describe("Aggregator", () => {
 
         const errorEvent = findErrorEvent();
         expect(errorEvent.error).to.equal(e.message);
-        expect(errorEvent.stack).to.equal(limitStack(e.stack, 10));
+        expect(errorEvent.stack).to.equal(e.stack);
         expect(errorEvent.key1).to.equal('value1');
         expect(errorEvent.key2).to.equal(2);
       }

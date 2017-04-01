@@ -44,7 +44,7 @@ export const assign = (dest, ...sources) => {
 
 export const keys = (obj) => {
   const keys = [];
-  for (let key in obj) {
+  for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
       keys.push(key);
     }
