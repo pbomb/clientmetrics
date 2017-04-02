@@ -2,7 +2,7 @@
   "name": "rally-clientmetrics",
   "version": "6.0.0",
   "description": "Metrics aggregation for Rally Software",
-  "main": "builds/rallymetrics.js",
+  "main": "src/main.js",
   "scripts": {
     "lint": "eslint src",
     "docs": "grunt jsdoc",
