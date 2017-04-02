@@ -1,4 +1,5 @@
 import WindowErrorListener from '../windowErrorListener';
+import { stub } from '../../test-utils/specHelper';
 
 describe('WindowErrorListener', () => {
   let aggregator, originalOnError;
@@ -12,9 +13,9 @@ describe('WindowErrorListener', () => {
   };
 
   beforeEach(() => {
-    originalOnError = window.onerror = sinon.stub();
+    originalOnError = window.onerror = stub();
     aggregator = {
-      recordError: sinon.stub()
+      recordError: stub()
     };
   });
 
@@ -25,18 +26,18 @@ describe('WindowErrorListener', () => {
   it('should record the error message, file and line number', () => {
     createListener();
     window.onerror(message, filename, lineno);
-    expect(aggregator.recordError).to.have.been.calledWith(message + ", " + filename + ":" + lineno, {});
+    expect(aggregator.recordError).toHaveBeenCalledWith(message + ", " + filename + ":" + lineno, {});
   });
 
   it('should pass column number and stack trace if available', () => {
     createListener();
     window.onerror(message, filename, lineno, colno);
-    expect(aggregator.recordError.args[0][1]).to.deep.equal({
+    expect(aggregator.recordError.args[0][1]).toEqual({
       columnNumber: colno
     });
     const stack = 'stack trace';
     window.onerror(message, filename, lineno, colno, { stack });
-    expect(aggregator.recordError.args[1][1]).to.deep.equal({
+    expect(aggregator.recordError.args[1][1]).toEqual({
       columnNumber: colno,
       stack
     });
@@ -46,7 +47,7 @@ describe('WindowErrorListener', () => {
     createListener();
     const stack = new Array(1000).map(() => 'this is a very long stack trace that should be preserved').join('\n');
     window.onerror(message, filename, lineno, colno, { stack });
-    expect(aggregator.recordError.args[0][1].stack).to.equal(stack);
+    expect(aggregator.recordError.args[0][1].stack).toBe(stack);
   });
 
   it('should trim stack if configured', () => {
@@ -56,21 +57,21 @@ describe('WindowErrorListener', () => {
     });
     const stack = new Array(1000).map(() => 'this is a very long stack trace that should be preserved').join('\n');
     window.onerror(message, filename, lineno, colno, { stack });
-    expect(aggregator.recordError.args[0][1].stack).to.equal(stack.split('\n').slice(0, stackLimit).join('\n'));
+    expect(aggregator.recordError.args[0][1].stack).toBe(stack.split('\n').slice(0, stackLimit).join('\n'));
   });
 
   it('should gracefully deal with no error message, file and line number', () => {
     createListener();
     window.onerror({});
     const errorInfo = aggregator.recordError.args[0][0];
-    expect(errorInfo).not.to.have.string('undefined');
-    expect(errorInfo).to.have.string('?');
+    expect(errorInfo).not.toContain('undefined');
+    expect(errorInfo).toContain('?');
   });
 
   it('should maintain the existing window.onerror', () => {
     createListener();
     window.onerror(message, filename, lineno);
-    expect(aggregator.recordError).to.have.been.calledWith(`${message}, ${filename}:${lineno}`);
-    expect(originalOnError).to.have.been.calledWith(message, filename, lineno);
+    expect(aggregator.recordError).toHaveBeenCalledWith(`${message}, ${filename}:${lineno}`);
+    expect(originalOnError).toHaveBeenCalledWith(message, filename, lineno);
   });
 });

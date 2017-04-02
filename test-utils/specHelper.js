@@ -1,44 +1,34 @@
-window.expect = chai.expect;
+import sinon from 'sinon';
+import sinonMatchers from './sinonMatchers';
 
-export const once = (opts) => {
-  if (opts.timeout == null) {
-    opts.timeout = 3000;
-  }
-  if (opts.condition == null) {
-    throw new Error('Condition attribute not specified');
-  }
-  const deferred = window.when.defer();
-  const now = Date.now();
-  const pollFn = () => {
-    if (Date.now() - now > 3000) {
-      deferred.reject("Timeout waiting for promise to resolve. " + opts.description || "");
-      return true;
-    }
-    if (opts.condition()) {
-      deferred.resolve();
-      return true;
-    } else {
-      return false;
-    }
-  };
-  window.when.poll(pollFn, 10);
-  return deferred.promise;
-};
+expect.extend(sinonMatchers);
+
+let sandbox = null;
 
 const sinonSandboxSetUp = (spec) => {
-  if (spec.__sandbox__) {
-    return;
-  }
-  const config = sinon.getConfig(sinon.config);
-  config.injectInto = config.injectIntoThis && spec || config.injectInto;
-  config.useFakeTimers = false;
-  spec.__sandbox__ = sinon.sandbox.create(config);
+  sandbox = sinon.sandbox.create({
+    useFakeServer: false,
+    useFakeTimers: false
+  });
 };
 
 const sinonSandboxTearDown = (spec) => {
-  spec.__sandbox__.verifyAndRestore();
-  return delete spec.__sandbox__;
+  sandbox.restore();
+  sandbox = null;
 };
+
+export const stub = (...args) => {
+  if (args.length === 0) {
+    return sinon.stub();
+  }
+  if (!sandbox) {
+    throw TypeError('Cannot call stub function of sinonSandbox outside of an individual test');
+  }
+  return sandbox.stub(...args);
+};
+
+export const useFakeTimers = () => sandbox.useFakeTimers();
+export const useFakeXMLHttpRequest = () => sandbox.useFakeXMLHttpRequest();
 
 beforeEach(function() {
   return sinonSandboxSetUp(this);

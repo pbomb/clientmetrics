@@ -1,6 +1,6 @@
 import BatchSender from './corsBatchSender';
 import { assign, forEach, omit } from './util';
-import uuid from 'uuid';
+import uuidV4 from 'uuid/v4';
 
 // The default for max number of errors we will send per session.
 const DEFAULT_ERROR_LIMIT = 25;
@@ -16,7 +16,7 @@ const WEBSERVICE_SLUG = 'webservice/';
 /**
  * Creates a version 4 UUID
  */
-const getUniqueId = () => uuid.v4();
+const getUniqueId = () => uuidV4();
 
 /**
  * Massages the AJAX url into a smaller form. Strips away the host and query
@@ -138,6 +138,8 @@ class Aggregator {
     this.sendAllRemainingEvents = this.sendAllRemainingEvents.bind(this);
     this._onSend = this._onSend.bind(this);
     assign(this, config);
+    this._actionStartTime = null;
+    this._sessionStartTime = null;
     this._pendingEvents = [];
     this._browserTabId = getUniqueId();
     this._startingTime = Date.now();
@@ -193,7 +195,7 @@ class Aggregator {
     this._defaultParams = omit(defaultParams, ['sessionStart']);
 
     this._errorCount = 0;
-    delete this._actionStartTime;
+    this._actionStartTime = null;
   }
 
   /**
@@ -201,7 +203,6 @@ class Aggregator {
    */
   recordAction(options) {
     const cmp = options.component;
-    delete options.component;
     const traceId = getUniqueId();
     this._actionStartTime = this.getRelativeTime(options.startTime);
 
@@ -259,8 +260,7 @@ class Aggregator {
   }
 
   recordComponentReady(options) {
-    if (typeof this._sessionStartTime === 'undefined'
-        || typeof this._actionStartTime === 'undefined') {
+    if (this._sessionStartTime === null || this._actionStartTime === null) {
       return;
     }
 
@@ -615,7 +615,7 @@ class Aggregator {
   _startEvent(event) {
     event.tabId = this._browserTabId;
 
-    if (!event.start) {
+    if (!Number.isInteger(event.start)) {
       event.start = this.getRelativeTime();
     }
     event.bts = this.getUnrelativeTime(event.start);

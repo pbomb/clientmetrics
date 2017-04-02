@@ -1,5 +1,5 @@
-var path = require('path');
-var webpack = require('webpack');
+const path = require('path');
+const webpack = require('webpack');
 
 module.exports = {
   context: __dirname,
@@ -11,7 +11,6 @@ module.exports = {
     libraryTarget: 'umd'
   },
 
-  debug: true,
   devtool: 'source-map',
 
   stats: {
@@ -20,20 +19,19 @@ module.exports = {
   },
 
   resolve: {
-    modulesDirectories: ["node_modules"],
-    extensions: ["", ".webpack.js", ".web.js", ".js"]
+    modules: ["node_modules"],
+    extensions: [".js"]
   },
 
   module: {
-    loaders: [
+    rules: [
       {
-        test: /\.js$/, exclude: /node_modules/, loader: 'babel'
+        test: /\.js$/, exclude: /node_modules/, loader: 'babel-loader'
       }
     ]
   },
 
   plugins: [
-    new webpack.optimize.DedupePlugin(),
     new webpack.optimize.UglifyJsPlugin({
       compress: {
         warnings: false

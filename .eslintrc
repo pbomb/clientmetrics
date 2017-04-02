@@ -2,20 +2,21 @@
   "extends": "rally",
 
   "env": {
-    "node": true,
-    "mocha" : true
+    "node": true
   },
 
   "globals": {
-    "chai": true,
     "document": true,
     "Event": true,
+    "Promise": true,
     "XMLHttpRequest": true,
-    "XDomainRequest": true,
+    "afterEach": true,
+    "beforeEach": true,
     "expect": true,
-    "pit": true,
-    "fpit": true,
-    "xpit": true,
+    "fit": true,
+    "it": true,
+    "jasmine": true,
+    "xit": true,
     "sinon": true,
     "window": true
   }

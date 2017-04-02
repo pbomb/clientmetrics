@@ -1,5 +1,4 @@
-import { assign, omit } from './util';
-import { createCorsXhr } from './util';
+import { assign, createCorsXhr, omit } from './util';
 
 // the min and max number of events to put into one batch. Since we are now
 // using POSTs, we have a lot more room.
@@ -50,7 +49,7 @@ const useSetTimeout = (callback) => window.setTimeout(callback, 1000);
  * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
  * @param {Function} [config.sendDeferred] Function that calls passed-in callback function, possibly asyncronously
  */
-export default class CorsBatchSender {
+class CorsBatchSender {
   constructor(config) {
     this._disableClientMetrics = this._disableClientMetrics.bind(this);
     this.sendDeferred = typeof window.requestIdleCallback === 'function' ? useRequestIdle : useSetTimeout;
@@ -138,3 +137,5 @@ export default class CorsBatchSender {
     }
   }
 }
+
+export default CorsBatchSender;

@@ -1,5 +1,4 @@
-var path = require('path');
-var webpack = require('webpack');
+const path = require('path');
 
 module.exports = {
   context: __dirname,
@@ -11,22 +10,20 @@ module.exports = {
     libraryTarget: 'umd'
   },
 
-  debug: true,
-
   stats: {
     colors: true,
     reasons: true
   },
 
   resolve: {
-    modulesDirectories: ["node_modules"],
-    extensions: ["", ".webpack.js", ".web.js", ".js"]
+    modules: ["node_modules"],
+    extensions: [".js"]
   },
 
   module: {
-    loaders: [
+    rules: [
       {
-        test: /\.js$/, exclude: /node_modules/, loader: 'babel'
+        test: /\.js$/, exclude: /node_modules/, loader: 'babel-loader'
       }
     ]
   }
