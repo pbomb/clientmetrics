@@ -33,7 +33,8 @@
   },
   "files": [
     "builds",
-    "doc"
+    "doc",
+    "src"
   ],
   "devDependencies": {
     "babel-core": "6.24.0",
