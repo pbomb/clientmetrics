@@ -8,14 +8,14 @@ describe('WindowErrorListener', () => {
   const lineno = 22;
   const colno = 13;
 
-  const createListener = (config) => {
+  const createListener = config => {
     return new WindowErrorListener(aggregator, true, config);
   };
 
   beforeEach(() => {
     originalOnError = window.onerror = stub();
     aggregator = {
-      recordError: stub()
+      recordError: stub(),
     };
   });
 
@@ -26,26 +26,31 @@ describe('WindowErrorListener', () => {
   it('should record the error message, file and line number', () => {
     createListener();
     window.onerror(message, filename, lineno);
-    expect(aggregator.recordError).toHaveBeenCalledWith(message + ", " + filename + ":" + lineno, {});
+    expect(aggregator.recordError).toHaveBeenCalledWith(
+      message + ', ' + filename + ':' + lineno,
+      {},
+    );
   });
 
   it('should pass column number and stack trace if available', () => {
     createListener();
     window.onerror(message, filename, lineno, colno);
     expect(aggregator.recordError.args[0][1]).toEqual({
-      columnNumber: colno
+      columnNumber: colno,
     });
     const stack = 'stack trace';
     window.onerror(message, filename, lineno, colno, { stack });
     expect(aggregator.recordError.args[1][1]).toEqual({
       columnNumber: colno,
-      stack
+      stack,
     });
   });
 
   it('should not trim stack by default', () => {
     createListener();
-    const stack = new Array(1000).map(() => 'this is a very long stack trace that should be preserved').join('\n');
+    const stack = new Array(1000)
+      .map(() => 'this is a very long stack trace that should be preserved')
+      .join('\n');
     window.onerror(message, filename, lineno, colno, { stack });
     expect(aggregator.recordError.args[0][1].stack).toBe(stack);
   });
@@ -53,11 +58,15 @@ describe('WindowErrorListener', () => {
   it('should trim stack if configured', () => {
     const stackLimit = 10;
     createListener({
-      stackLimit: stackLimit
+      stackLimit: stackLimit,
     });
-    const stack = new Array(1000).map(() => 'this is a very long stack trace that should be preserved').join('\n');
+    const stack = new Array(1000)
+      .map(() => 'this is a very long stack trace that should be preserved')
+      .join('\n');
     window.onerror(message, filename, lineno, colno, { stack });
-    expect(aggregator.recordError.args[0][1].stack).toBe(stack.split('\n').slice(0, stackLimit).join('\n'));
+    expect(aggregator.recordError.args[0][1].stack).toBe(
+      stack.split('\n').slice(0, stackLimit).join('\n'),
+    );
   });
 
   it('should gracefully deal with no error message, file and line number', () => {

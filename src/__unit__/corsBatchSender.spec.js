@@ -5,12 +5,18 @@ import { stub } from '../../test-utils/specHelper';
 let mockXhr;
 
 const createSender = (config = {}) => {
-  return new CorsBatchSender(Util.assign({}, {
-    beaconUrl: 'totallyfakeurl'
-  }, config));
+  return new CorsBatchSender(
+    Util.assign(
+      {},
+      {
+        beaconUrl: 'totallyfakeurl',
+      },
+      config,
+    ),
+  );
 };
 
-const getData = (count) => {
+const getData = count => {
   const results = [];
   for (let i = 0; i < count; i++) {
     results.push({ foo: i });
@@ -18,14 +24,13 @@ const getData = (count) => {
   return results;
 };
 
-const sendDeferred = (callback) => callback();
+const sendDeferred = callback => callback();
 
-describe("CorsBatchSender", () => {
-
+describe('CorsBatchSender', () => {
   beforeEach(() => {
     mockXhr = {
       foo: 'bar',
-      send: stub()
+      send: stub(),
     };
     const stubb = stub(Util, 'createCorsXhr').returns(mockXhr);
   });
@@ -44,24 +49,24 @@ describe("CorsBatchSender", () => {
     });
 
     describe('keysToIgnore', () => {
-      it("should strip out all keys in keysToIgnore", () => {
-        const aKeyToIgnore = "testKey";
-        const anotherKeyToIgnore = "theOtherKey";
+      it('should strip out all keys in keysToIgnore', () => {
+        const aKeyToIgnore = 'testKey';
+        const anotherKeyToIgnore = 'theOtherKey';
         const sender = createSender({
           keysToIgnore: [aKeyToIgnore, anotherKeyToIgnore],
           minNumberOfEvents: 0,
-          sendDeferred
+          sendDeferred,
         });
         const data = {
-          foo: "bar",
-          [aKeyToIgnore]: "should ignore this one",
-          [anotherKeyToIgnore]: "this one too"
+          foo: 'bar',
+          [aKeyToIgnore]: 'should ignore this one',
+          [anotherKeyToIgnore]: 'this one too',
         };
         sender.send(data);
-        expect(mockXhr.send).toHaveBeenCalled()
+        expect(mockXhr.send).toHaveBeenCalled();
         const sentData = JSON.parse(mockXhr.send.args[0][0]);
         expect(Object.keys(sentData).length).toBe(1);
-        expect(sentData["foo.0"]).toBe("bar");
+        expect(sentData['foo.0']).toBe('bar');
         expect(sentData[`${aKeyToIgnore}.0`]).toBeUndefined();
         expect(sentData[`${anotherKeyToIgnore}.0`]).toBeUndefined();
       });
@@ -84,7 +89,7 @@ describe("CorsBatchSender", () => {
       }
     });
 
-    it("should not send a batch if the number of events is less than the minimum", () => {
+    it('should not send a batch if the number of events is less than the minimum', () => {
       const sender = createSender({
         minNumberOfEvents: 1000,
         sendDeferred,
@@ -92,11 +97,11 @@ describe("CorsBatchSender", () => {
       const data = getData(2);
       data.forEach(datum => sender.send(datum));
       expect(sender.getPendingEvents()).toEqual(data);
-      expect(Util.createCorsXhr).not.toHaveBeenCalled()
+      expect(Util.createCorsXhr).not.toHaveBeenCalled();
     });
 
-    it("should send to the configured url", () => {
-      const clientMetricsUrl = "http://localhost/testing";
+    it('should send to the configured url', () => {
+      const clientMetricsUrl = 'http://localhost/testing';
       const sender = createSender({
         beaconUrl: clientMetricsUrl,
         minNumberOfEvents: 2,
@@ -104,11 +109,11 @@ describe("CorsBatchSender", () => {
       });
       const data = getData(2);
       data.forEach(datum => sender.send(datum));
-      expect(Util.createCorsXhr.args[0][0]).toBe("POST");
+      expect(Util.createCorsXhr.args[0][0]).toBe('POST');
       expect(Util.createCorsXhr.args[0][1]).toBe(clientMetricsUrl);
     });
 
-    it("should disable sending client metrics if configured", () => {
+    it('should disable sending client metrics if configured', () => {
       const sender = createSender({
         disableSending: true,
         minNumberOfEvents: 0,
@@ -116,10 +121,10 @@ describe("CorsBatchSender", () => {
       });
       expect(sender.isDisabled()).toBe(true);
       sender.send({});
-      expect(Util.createCorsXhr).not.toHaveBeenCalled()
+      expect(Util.createCorsXhr).not.toHaveBeenCalled();
     });
 
-    it("should not make a request if disabled, but still purge events", () => {
+    it('should not make a request if disabled, but still purge events', () => {
       const sender = createSender({
         disableSending: true,
         minNumberOfEvents: 0,
@@ -127,26 +132,26 @@ describe("CorsBatchSender", () => {
       });
       const data = getData(1);
       data.forEach(datum => sender.send(datum));
-      expect(Util.createCorsXhr).not.toHaveBeenCalled()
+      expect(Util.createCorsXhr).not.toHaveBeenCalled();
       expect(sender.getPendingEvents().length).toBe(0);
     });
 
-    describe("when an error occurs", () => {
-      it("should disable sending client metrics if there is a POST error", () => {
-        const clientMetricsUrl = "http://unknownhost/to/force/an/error";
+    describe('when an error occurs', () => {
+      it('should disable sending client metrics if there is a POST error', () => {
+        const clientMetricsUrl = 'http://unknownhost/to/force/an/error';
         const sender = createSender({
           beaconUrl: clientMetricsUrl,
           minNumberOfEvents: 0,
           sendDeferred,
         });
         sender.send({});
-        expect(typeof mockXhr.onerror).toBe("function");
+        expect(typeof mockXhr.onerror).toBe('function');
         expect(sender.isDisabled()).toBe(false);
         mockXhr.onerror();
         expect(sender.isDisabled()).toBe(true);
       });
 
-      it("should disable client metrics if an exception is thrown", () => {
+      it('should disable client metrics if an exception is thrown', () => {
         Util.createCorsXhr.throws();
         const sender = createSender({
           minNumberOfEvents: 0,
@@ -160,8 +165,8 @@ describe("CorsBatchSender", () => {
   });
 
   describe('#flush', () => {
-    it("should send a batch even though the number of events is less than the minimum", () => {
-      const clientMetricsUrl = "http://localhost/testing";
+    it('should send a batch even though the number of events is less than the minimum', () => {
+      const clientMetricsUrl = 'http://localhost/testing';
       const sender = createSender({
         beaconUrl: clientMetricsUrl,
         minNumberOfEvents: 1000,
@@ -170,7 +175,7 @@ describe("CorsBatchSender", () => {
       const data = getData(2);
       data.forEach(datum => sender.send(datum));
       expect(sender.getPendingEvents()).toEqual(data);
-      expect(Util.createCorsXhr).not.toHaveBeenCalled()
+      expect(Util.createCorsXhr).not.toHaveBeenCalled();
       sender.flush();
       expect(sender.getPendingEvents().length).toBe(0);
       expect(Util.createCorsXhr).toHaveBeenCalledOnce();

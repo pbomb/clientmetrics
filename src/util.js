@@ -6,7 +6,9 @@ export const createCorsXhr = (method, url) => {
 };
 
 export const omit = (obj, fields) => {
-  if (!obj) { return {}; }
+  if (!obj) {
+    return {};
+  }
   return Object.keys(obj).reduce((acc, key) => {
     if (fields.indexOf(key) === -1) {
       acc[key] = obj[key];
@@ -16,11 +18,11 @@ export const omit = (obj, fields) => {
 };
 
 export const assign = (dest, ...sources) => {
-  sources.forEach((source) => {
+  sources.forEach(source => {
     if (typeof source !== 'object') {
       return;
     }
-    Object.keys(source).forEach((key) => {
+    Object.keys(source).forEach(key => {
       dest[key] = source[key];
     });
   });

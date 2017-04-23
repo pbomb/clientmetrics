@@ -19,14 +19,14 @@ class Panel {
 
 const recordAction = (aggregator, cmp, description) => {
   if (description == null) {
-    description = "an action";
+    description = 'an action';
   }
   if (cmp == null) {
     cmp = new Panel();
   }
   aggregator.recordAction({
     component: cmp,
-    description: description
+    description: description,
   });
   return cmp;
 };
@@ -43,7 +43,7 @@ const beginLoad = (aggregator, cmp, description, miscData) => {
   aggregator.beginLoad({
     component: cmp,
     description: description,
-    miscData: miscData
+    miscData: miscData,
   });
   return cmp;
 };
@@ -52,7 +52,7 @@ const endLoad = (aggregator, cmp) => {
     cmp = new Panel();
   }
   aggregator.endLoad({
-    component: cmp
+    component: cmp,
   });
   return cmp;
 };
@@ -70,7 +70,7 @@ const recordError = (aggregator, error, miscData) => {
 };
 const startSession = (aggregator, status, defaultParams) => {
   if (status == null) {
-    status = "Navigation";
+    status = 'Navigation';
   }
   if (defaultParams == null) {
     defaultParams = {};
@@ -79,7 +79,7 @@ const startSession = (aggregator, status, defaultParams) => {
 
   return { status, defaultParams };
 };
-const createAggregator = (config) => {
+const createAggregator = config => {
   if (config == null) {
     config = {};
   }
@@ -87,12 +87,16 @@ const createAggregator = (config) => {
     getAppName: stub().returns('testAppName'),
     getComponentType(cmp) {
       return cmp.name || false;
-    }
+    },
   };
-  const aggregatorConfig = assign({}, {
-    sender: createSender(),
-    handlers: [handler]
-  }, config);
+  const aggregatorConfig = assign(
+    {},
+    {
+      sender: createSender(),
+      handlers: [handler],
+    },
+    config,
+  );
   return new Aggregator(aggregatorConfig);
 };
 const createSender = () => {
@@ -104,7 +108,7 @@ const createSender = () => {
     getMaxLength() {
       return 2000;
     },
-    flush: stub()
+    flush: stub(),
   };
 };
 const createAggregatorAndRecordAction = (config = {}) => {
@@ -116,7 +120,8 @@ const findActionEvent = () => sentEvents.find(ev => ev.eType === 'action');
 const findLoadEvent = () => sentEvents.find(ev => ev.eType === 'load');
 const findDataEvent = () => sentEvents.find(ev => ev.eType === 'dataRequest');
 const findErrorEvent = () => sentEvents.find(ev => ev.eType === 'error');
-const findComponentReadyEvent = () => sentEvents.find(ev => ev.eType === 'load' && ev.componentReady);
+const findComponentReadyEvent = () =>
+  sentEvents.find(ev => ev.eType === 'load' && ev.componentReady);
 
 describe('Aggregator', () => {
   const rallyRequestId = 123456;
@@ -135,7 +140,7 @@ describe('Aggregator', () => {
 
     it('should be disabled if configured', () => {
       aggregator = new Aggregator({
-        disableSending: true
+        disableSending: true,
       });
       expect(aggregator.sender.isDisabled()).toBeTruthy();
     });
@@ -145,7 +150,7 @@ describe('Aggregator', () => {
     it('should flush on the specified interval', function() {
       const clock = useFakeTimers();
       aggregator = createAggregator({
-        flushInterval: 10
+        flushInterval: 10,
       });
       const start = Date.now();
       clock.tick(10);
@@ -158,7 +163,7 @@ describe('Aggregator', () => {
     it('should add handler with NO index specified', () => {
       aggregator = createAggregator();
       const newHandler = {
-        foo: 'bar'
+        foo: 'bar',
       };
       aggregator.addHandler(newHandler);
       expect(aggregator.handlers.length).toEqual(2);
@@ -167,7 +172,7 @@ describe('Aggregator', () => {
     it('should add handler at specified index', () => {
       aggregator = createAggregator();
       const newHandler = {
-        foo: 'bar'
+        foo: 'bar',
       };
       aggregator.addHandler(newHandler, 0);
       expect(aggregator.handlers.length).toEqual(2);
@@ -176,32 +181,32 @@ describe('Aggregator', () => {
   });
 
   describe('#startSession', () => {
-    it("should flush the sender", () => {
+    it('should flush the sender', () => {
       aggregator = createAggregator();
       startSession(aggregator);
       expect(aggregator.sender.flush).toHaveBeenCalledOnce();
     });
-    it("should append defaultParams to events", () => {
+    it('should append defaultParams to events', () => {
       aggregator = createAggregator();
-      const hash = "/some/hash";
+      const hash = '/some/hash';
       const defaultParams = {
-        hash: hash
+        hash: hash,
       };
-      aggregator.startSession("Session 1", defaultParams);
+      aggregator.startSession('Session 1', defaultParams);
       recordAction(aggregator);
 
       const actionEvent = findActionEvent();
       expect(actionEvent.hash).toEqual(hash);
     });
-    it("should allow a startTime in the past", () => {
+    it('should allow a startTime in the past', () => {
       aggregator = createAggregator();
-      const hash = "/some/hash";
+      const hash = '/some/hash';
       const startingTime = Date.now() - 5000;
       const defaultParams = {
         hash: hash,
-        sessionStart: startingTime
+        sessionStart: startingTime,
       };
-      aggregator.startSession("Session 1", defaultParams);
+      aggregator.startSession('Session 1', defaultParams);
       expect(aggregator.getSessionStartTime()).toBeGreaterThan(0);
       expect(aggregator.getDefaultParams().sessionStart).toEqual(void 0);
     });
@@ -225,23 +230,23 @@ describe('Aggregator', () => {
       xhrFake.restore();
     });
 
-    it("should accept miscData", () => {
+    it('should accept miscData', () => {
       aggregator = createAggregatorAndRecordAction();
       const miscData = {
-        such: "wow"
+        such: 'wow',
       };
       const requester = {};
 
-      const metricsData = aggregator.beginDataRequest(requester, "/foo", miscData);
+      const metricsData = aggregator.beginDataRequest(requester, '/foo', miscData);
       aggregator.endDataRequest(requester, xhrFake, metricsData.requestId);
 
       const dataEvent = findDataEvent();
-      expect(dataEvent.such).toEqual("wow");
+      expect(dataEvent.such).toEqual('wow');
     });
-    it("should trim the request url correctly", () => {
+    it('should trim the request url correctly', () => {
       aggregator = createAggregatorAndRecordAction();
-      const expectedUrl = "3.14/Foo.js";
-      const entireUrl = "http://localhost/testing/webservice/" + expectedUrl + "?bar=baz&boo=buzz";
+      const expectedUrl = '3.14/Foo.js';
+      const entireUrl = 'http://localhost/testing/webservice/' + expectedUrl + '?bar=baz&boo=buzz';
       const requester = {};
       const metricsData = aggregator.beginDataRequest(requester, entireUrl);
 
@@ -250,132 +255,132 @@ describe('Aggregator', () => {
       const dataEvent = findDataEvent();
       expect(dataEvent.url).toEqual(expectedUrl);
     });
-    it("should have the component hierarchy for Ext4 nesting", () => {
+    it('should have the component hierarchy for Ext4 nesting', () => {
       aggregator = createAggregatorAndRecordAction();
       const parentPanel = new Panel();
       const childPanel = parentPanel.add({
-        xtype: "panel"
+        xtype: 'panel',
       });
 
-      const metricsData = aggregator.beginDataRequest(childPanel, "someUrl");
+      const metricsData = aggregator.beginDataRequest(childPanel, 'someUrl');
       aggregator.endDataRequest(childPanel, xhrFake, metricsData.requestId);
 
       const dataEvent = findDataEvent();
-      expect(dataEvent.cmpH).toEqual("Panel:Panel");
+      expect(dataEvent.cmpH).toEqual('Panel:Panel');
     });
-    it("should have the component hierarchy for Ext2 nesting", () => {
+    it('should have the component hierarchy for Ext2 nesting', () => {
       aggregator = createAggregatorAndRecordAction();
       const parentObj = {
-        name: 'Parent'
+        name: 'Parent',
       };
       const childObj = {
         name: 'Child',
-        owner: parentObj
+        owner: parentObj,
       };
 
-      const metricsData = aggregator.beginDataRequest(childObj, "someUrl");
+      const metricsData = aggregator.beginDataRequest(childObj, 'someUrl');
       aggregator.endDataRequest(childObj, xhrFake, metricsData.requestId);
 
       const dataEvent = findDataEvent();
-      expect(dataEvent.cmpH).toEqual("Child:Parent");
+      expect(dataEvent.cmpH).toEqual('Child:Parent');
     });
-    it("should have the component hierarchy for initialConfig nesting", () => {
+    it('should have the component hierarchy for initialConfig nesting', () => {
       aggregator = createAggregatorAndRecordAction();
       const parentObj = {
-        name: 'Parent'
+        name: 'Parent',
       };
       const childObj = {
         name: 'Child',
         initialConfig: {
-          owner: parentObj
-        }
+          owner: parentObj,
+        },
       };
 
-      const metricsData = aggregator.beginDataRequest(childObj, "someUrl");
+      const metricsData = aggregator.beginDataRequest(childObj, 'someUrl');
       aggregator.endDataRequest(childObj, xhrFake, metricsData.requestId);
 
       const dataEvent = findDataEvent();
-      expect(dataEvent.cmpH).toEqual("Child:Parent");
+      expect(dataEvent.cmpH).toEqual('Child:Parent');
     });
-    it("should have the component hierarchy for clientMetricsParent property", () => {
+    it('should have the component hierarchy for clientMetricsParent property', () => {
       aggregator = createAggregatorAndRecordAction();
       const parentObj = {
-        name: 'Parent'
+        name: 'Parent',
       };
       const childObj = {
         name: 'Child',
-        clientMetricsParent: parentObj
+        clientMetricsParent: parentObj,
       };
 
-      const metricsData = aggregator.beginDataRequest(childObj, "someUrl");
+      const metricsData = aggregator.beginDataRequest(childObj, 'someUrl');
       aggregator.endDataRequest(childObj, xhrFake, metricsData.requestId);
 
       const dataEvent = findDataEvent();
-      expect(dataEvent.cmpH).toEqual("Child:Parent");
+      expect(dataEvent.cmpH).toEqual('Child:Parent');
     });
-    it("returns ID properties for AJAX headers", () => {
+    it('returns ID properties for AJAX headers', () => {
       aggregator = createAggregatorAndRecordAction();
       const requester = {};
 
-      const metricsData = aggregator.beginDataRequest(requester, "someUrl");
+      const metricsData = aggregator.beginDataRequest(requester, 'someUrl');
       aggregator.endDataRequest(requester, xhrFake, metricsData.requestId);
 
       const actionEvent = findActionEvent();
       const dataEvent = findDataEvent();
       expect(metricsData.xhrHeaders).toEqual({
         'X-Parent-Id': dataEvent.eId,
-        'X-Trace-Id': actionEvent.eId
+        'X-Trace-Id': actionEvent.eId,
       });
     });
-    it("does not return ID properties for AJAX headers when request is not instrumented", () => {
+    it('does not return ID properties for AJAX headers when request is not instrumented', () => {
       aggregator = createAggregatorAndRecordAction();
 
-      const metricsData = aggregator.beginDataRequest(null, "someUrl");
+      const metricsData = aggregator.beginDataRequest(null, 'someUrl');
 
       expect(metricsData).toBeUndefined();
     });
-    it("appends the rallyRequestId onto dataRequest events", () => {
+    it('appends the rallyRequestId onto dataRequest events', () => {
       aggregator = createAggregatorAndRecordAction();
       const requester = {};
       const xhr = new XMLHttpRequest();
       xhr.open('GET', 'someUrl', true);
       xhr.send('data');
       xhr.setResponseHeaders({
-        RallyRequestID: rallyRequestId
+        RallyRequestID: rallyRequestId,
       });
       xhr.setResponseBody('textual healing');
 
-      const metricsData = aggregator.beginDataRequest(requester, "someUrl");
+      const metricsData = aggregator.beginDataRequest(requester, 'someUrl');
       aggregator.endDataRequest(requester, xhr, metricsData.requestId);
 
       const dataEvent = findDataEvent();
       expect(dataEvent.rallyRequestId).toEqual(rallyRequestId);
     });
 
-    describe("passing in traceId", () => {
-      it("should allow options parameter for begin/endDataRequest", () => {
+    describe('passing in traceId', () => {
+      it('should allow options parameter for begin/endDataRequest', () => {
         aggregator = createAggregatorAndRecordAction();
         const requester = {};
 
         const metricsData = aggregator.beginDataRequest({
           requester: requester,
-          url: "someUrl",
+          url: 'someUrl',
           miscData: {
-            doge: 'wow'
-          }
+            doge: 'wow',
+          },
         });
         aggregator.endDataRequest({
           requester: requester,
           xhr: xhrFake,
-          requestId: metricsData.requestId
+          requestId: metricsData.requestId,
         });
 
         const dataEvent = findDataEvent();
-        expect(dataEvent.url).toEqual("someUrl");
+        expect(dataEvent.url).toEqual('someUrl');
         expect(dataEvent.tId).toMatch(uuidFormat);
         expect(dataEvent.eId).toMatch(uuidFormat);
         expect(dataEvent.pId).toMatch(uuidFormat);
-        expect(dataEvent.doge).toEqual("wow");
+        expect(dataEvent.doge).toEqual('wow');
       });
     });
   });
@@ -383,10 +388,10 @@ describe('Aggregator', () => {
     let actionEvent, aggregator, appName, browserTabId, loadEvent;
 
     beforeEach(() => {
-      appName = "testAppName";
+      appName = 'testAppName';
       const parentPanel = new Panel();
       const childPanel = parentPanel.add({
-        xtype: "panel"
+        xtype: 'panel',
       });
       aggregator = createAggregator();
       recordAction(aggregator, parentPanel);
@@ -396,61 +401,61 @@ describe('Aggregator', () => {
       loadEvent = sentEvents[1];
       browserTabId = aggregator._browserTabId;
     });
-    it("should generate uuids for the event id and trace id", () => {
+    it('should generate uuids for the event id and trace id', () => {
       expect(loadEvent.tId).toMatch(uuidFormat);
       expect(loadEvent.eId).toMatch(uuidFormat);
       expect(loadEvent.pId).toMatch(uuidFormat);
       expect(loadEvent.tabId).toMatch(uuidFormat);
     });
-    it("should have trace id and event id for the action event", () => {
+    it('should have trace id and event id for the action event', () => {
       expect(typeof actionEvent.tId).toBe('string');
       expect(actionEvent.eId).toEqual(actionEvent.tId);
     });
-    it("should not set the parent id for the action event", () => {
+    it('should not set the parent id for the action event', () => {
       expect(actionEvent.pId).toBeUndefined();
     });
-    it("should put the browser tab id on the events", () => {
+    it('should put the browser tab id on the events', () => {
       expect(actionEvent.tabId).toEqual(browserTabId);
       expect(loadEvent.tabId).toEqual(browserTabId);
     });
-    it("should put the browser timestamp on the events", () => {
+    it('should put the browser timestamp on the events', () => {
       expect(typeof loadEvent.bts).toBe('number');
       expect(typeof actionEvent.bts).toBe('number');
     });
-    it("should put the app name on the events", () => {
+    it('should put the app name on the events', () => {
       expect(loadEvent.appName).toEqual(appName);
       expect(actionEvent.appName).toEqual(appName);
     });
-    it("should parent the load event to the action event", () => {
+    it('should parent the load event to the action event', () => {
       expect(typeof loadEvent.pId).toBe('string');
       expect(loadEvent.pId).toEqual(actionEvent.eId);
     });
-    it("should have a common trace id for all the events", () => {
+    it('should have a common trace id for all the events', () => {
       expect(typeof loadEvent.tId).toBe('string');
       expect(typeof actionEvent.tId).toBe('string');
       expect(actionEvent.tId).toEqual(loadEvent.tId);
     });
-    it("should have a component type for the load event", () => {
+    it('should have a component type for the load event', () => {
       expect(typeof loadEvent.cmpType).toBe('string');
     });
-    it("should put the component hierarchy on the events", () => {
-      expect(actionEvent.cmpH).toEqual("Panel");
-      expect(loadEvent.cmpH).toEqual("Panel:Panel");
+    it('should put the component hierarchy on the events', () => {
+      expect(actionEvent.cmpH).toEqual('Panel');
+      expect(loadEvent.cmpH).toEqual('Panel:Panel');
     });
-    it("puts start time on all events", () => {
+    it('puts start time on all events', () => {
       expect(typeof actionEvent.start).toBe('number');
       expect(typeof loadEvent.start).toBe('number');
     });
-    it("puts stop time on the load event", () => {
+    it('puts stop time on the load event', () => {
       expect(typeof loadEvent.stop).toBe('number');
     });
   });
   describe('finding traceIDs', () => {
-    it("should find the correct traceId", () => {
+    it('should find the correct traceId', () => {
       aggregator = createAggregator();
       const parentPanel = new Panel();
       const childPanel = parentPanel.add({
-        xtype: "panel"
+        xtype: 'panel',
       });
       recordAction(aggregator, parentPanel);
       recordAction(aggregator, parentPanel);
@@ -460,14 +465,14 @@ describe('Aggregator', () => {
       const loadEvent = sentEvents[2];
       expect(loadEvent.pId).toEqual(secondActionEvent.eId);
     });
-    it("should not parent to an event that has completed", () => {
+    it('should not parent to an event that has completed', () => {
       aggregator = createAggregator();
       const parentPanel = new Panel();
       const childPanel1 = parentPanel.add({
-        xtype: "panel"
+        xtype: 'panel',
       });
       const childPanel2 = parentPanel.add({
-        xtype: "panel"
+        xtype: 'panel',
       });
       recordAction(aggregator, parentPanel);
       beginLoad(aggregator, parentPanel);
@@ -488,13 +493,13 @@ describe('Aggregator', () => {
     });
   });
   describe('miscData', () => {
-    it("should append miscData to an event and not overwrite known properties", () => {
+    it('should append miscData to an event and not overwrite known properties', () => {
       aggregator = createAggregatorAndRecordAction();
       const miscData = {
-        eId: "this shouldnt clobeber the real eId",
-        foo: "this should get through"
+        eId: 'this shouldnt clobeber the real eId',
+        foo: 'this should get through',
       };
-      const cmp = beginLoad(aggregator, null, "a load", miscData);
+      const cmp = beginLoad(aggregator, null, 'a load', miscData);
       endLoad(aggregator, cmp);
       const loadEvent = findLoadEvent();
       expect(typeof loadEvent.eId).toBe('string');
@@ -502,21 +507,21 @@ describe('Aggregator', () => {
       expect(loadEvent.foo).toEqual(miscData.foo);
     });
   });
-  describe("#recordAction", () => {
-    it("should return the traceId", () => {
+  describe('#recordAction', () => {
+    it('should return the traceId', () => {
       aggregator = createAggregator();
       const traceId = aggregator.recordAction({
         component: {},
-        description: "an action"
+        description: 'an action',
       });
       expect(traceId).toMatch(uuidFormat);
     });
-    it("should use the passed-in startTime", () => {
+    it('should use the passed-in startTime', () => {
       aggregator = createAggregator();
       aggregator.recordAction({
         component: {},
-        description: "an action",
-        startTime: 100
+        description: 'an action',
+        startTime: 100,
       });
       const span = findActionEvent();
       expect(span.start).toEqual(aggregator.getRelativeTime(100));
@@ -524,7 +529,7 @@ describe('Aggregator', () => {
     });
   });
 
-  describe("#startSpan", () => {
+  describe('#startSpan', () => {
     let panel, actionTraceId;
 
     beforeEach(() => {
@@ -533,58 +538,58 @@ describe('Aggregator', () => {
       aggregator.startSession({});
       actionTraceId = aggregator.recordAction({
         component: panel,
-        description: 'initial action'
+        description: 'initial action',
       });
     });
     it('sends the span when it is ended', () => {
       sentEvents = [];
       const span = aggregator.startSpan({
         component: panel,
-        description: "panel loading"
+        description: 'panel loading',
       });
       span.end();
       expect(sentEvents.length).toEqual(1);
     });
-    it("should allow a name to be passed in", () => {
+    it('should allow a name to be passed in', () => {
       const span = aggregator.startSpan({
         component: panel,
         name: 'foo',
-        description: "panel loading"
+        description: 'panel loading',
       });
       span.end();
 
       const loadEvent = findLoadEvent();
       expect(loadEvent.cmpType).toEqual('foo');
     });
-    it("should allow the hierarchy to be passed in", () => {
+    it('should allow the hierarchy to be passed in', () => {
       const span = aggregator.startSpan({
         component: panel,
         hierarchy: 'foo:bar:baz',
-        description: "panel loading"
+        description: 'panel loading',
       });
       span.end();
 
       const loadEvent = findLoadEvent();
       expect(loadEvent.cmpH).toEqual('foo:bar:baz');
     });
-    it("should allow the parent span id to be passed in", () => {
+    it('should allow the parent span id to be passed in', () => {
       const span = aggregator.startSpan({
         component: panel,
         pId: 'fee-fi-fo-fum',
-        description: "panel loading"
+        description: 'panel loading',
       });
       span.end();
 
       const loadEvent = findLoadEvent();
       expect(loadEvent.pId).toEqual('fee-fi-fo-fum');
     });
-    it("should allow the parent span id to be passed in when ending span", () => {
+    it('should allow the parent span id to be passed in when ending span', () => {
       const span = aggregator.startSpan({
         component: panel,
-        description: "panel loading"
+        description: 'panel loading',
       });
       span.end({
-        pId: 'fee-fi-fo-fum'
+        pId: 'fee-fi-fo-fum',
       });
 
       const loadEvent = findLoadEvent();
@@ -593,11 +598,11 @@ describe('Aggregator', () => {
     it('should associate event started in previous action to the previous action', () => {
       const span = aggregator.startSpan({
         component: panel,
-        description: "panel loading"
+        description: 'panel loading',
       });
       aggregator.recordAction({
         component: panel,
-        description: 'another action'
+        description: 'another action',
       });
       sentEvents = [];
       span.end();
@@ -611,17 +616,17 @@ describe('Aggregator', () => {
       return stack.split('\n').slice(0, stackLimit).join('\n');
     };
 
-    it("sends an error event", () => {
+    it('sends an error event', () => {
       aggregator = createAggregatorAndRecordAction();
       const errorMessage = recordError(aggregator);
 
       expect(sentEvents.length).toEqual(2);
       const errorEvent = findErrorEvent();
-      expect(errorEvent.eType).toEqual("error");
+      expect(errorEvent.eType).toEqual('error');
       expect(errorEvent.error).toEqual(errorMessage.message);
     });
 
-    it("limits the stack to 20 lines by default", () => {
+    it('limits the stack to 20 lines by default', () => {
       aggregator = createAggregatorAndRecordAction();
       const errorMessage = recordError(aggregator);
       const errorEvent = findErrorEvent();
@@ -629,7 +634,7 @@ describe('Aggregator', () => {
       expect(errorEvent.stack).toEqual(limitStack(errorMessage.stack, 20));
     });
 
-    it("limits the stack to 2 lines when configured", () => {
+    it('limits the stack to 2 lines when configured', () => {
       aggregator = createAggregatorAndRecordAction({ stackLimit: 2 });
       const errorMessage = recordError(aggregator);
       const errorEvent = findErrorEvent();
@@ -637,7 +642,7 @@ describe('Aggregator', () => {
       expect(errorEvent.stack).toEqual(limitStack(errorMessage.stack, 2));
     });
 
-    it("filters stacks that match ignoreStackMatcher", () => {
+    it('filters stacks that match ignoreStackMatcher', () => {
       const ignoreStackMatcher = /recordError/;
       aggregator = createAggregatorAndRecordAction({ ignoreStackMatcher });
 
@@ -647,9 +652,9 @@ describe('Aggregator', () => {
       expect(ignoreStackMatcher.test(errorEvent.stack)).toEqual(false);
     });
 
-    it("does not create an error event if the error limit has been reached", () => {
+    it('does not create an error event if the error limit has been reached', () => {
       aggregator = createAggregatorAndRecordAction({
-        errorLimit: 3
+        errorLimit: 3,
       });
       expect(sentEvents.length).toEqual(1);
       const errorMessages = [];
@@ -658,22 +663,22 @@ describe('Aggregator', () => {
       }
       expect(sentEvents.length).toEqual(4);
       sentEvents.slice(1).forEach((errorEvent, i) => {
-        expect(errorEvent.error).toEqual("an error");
+        expect(errorEvent.error).toEqual('an error');
         expect(errorEvent.stack).toEqual(limitStack(errorMessages[i].stack, 20));
       });
     });
 
-    it("resets the error count whenever a new session starts", () => {
+    it('resets the error count whenever a new session starts', () => {
       aggregator = createAggregator();
       aggregator._errorCount = 2;
-      aggregator.startSession("newsession");
+      aggregator.startSession('newsession');
       expect(aggregator._errorCount).toEqual(0);
     });
 
-    it("truncates long error info", () => {
-      let errorMessage = "";
+    it('truncates long error info', () => {
+      let errorMessage = '';
       for (let i = 1; i <= 1000; i++) {
-        errorMessage += "uh oh";
+        errorMessage += 'uh oh';
       }
       expect(errorMessage.length).toBeGreaterThan(2000);
       aggregator = createAggregatorAndRecordAction();
@@ -688,14 +693,14 @@ describe('Aggregator', () => {
       }
     });
 
-    it("should send miscData keys and values if provided", () => {
+    it('should send miscData keys and values if provided', () => {
       aggregator = createAggregatorAndRecordAction();
       const miscData = {
         key1: 'value1',
-        key2: 2
+        key2: 2,
       };
       try {
-        throw new Error("error");
+        throw new Error('error');
       } catch (e) {
         recordError(aggregator, e, miscData);
 
@@ -707,66 +712,66 @@ describe('Aggregator', () => {
       }
     });
 
-    it("should allow an options object parameter", () => {
+    it('should allow an options object parameter', () => {
       aggregator = createAggregatorAndRecordAction();
-      aggregator.recordError("an error occured", {
-        stack: 'wow'
+      aggregator.recordError('an error occured', {
+        stack: 'wow',
       });
 
       const errorEvent = findErrorEvent();
-      expect(errorEvent.error).toEqual("an error occured");
-      expect(errorEvent.stack).toEqual("wow");
+      expect(errorEvent.error).toEqual('an error occured');
+      expect(errorEvent.stack).toEqual('wow');
     });
   });
 
-  describe("#recordComponentReady", () => {
+  describe('#recordComponentReady', () => {
     let panel;
 
     beforeEach(() => {
       aggregator = createAggregator();
       panel = new Panel();
     });
-    it("should not record a component ready if there is no session", () => {
+    it('should not record a component ready if there is no session', () => {
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
       expect(sentEvents.length).toEqual(0);
       expect(findComponentReadyEvent()).toBeUndefined();
     });
-    it("should not record a component ready if there is a session but no action", () => {
+    it('should not record a component ready if there is a session but no action', () => {
       startSession(aggregator);
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
       expect(sentEvents.length).toEqual(0);
       expect(findComponentReadyEvent()).toBeUndefined();
     });
-    it("should not record a component ready if a session is started, an action is recorded, a new sesson is started, but an action does not follow the new session", () => {
+    it('should not record a component ready if a session is started, an action is recorded, a new sesson is started, but an action does not follow the new session', () => {
       startSession(aggregator);
       recordAction(aggregator, panel);
       startSession(aggregator);
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
       expect(sentEvents.length).toEqual(1);
       expect(findComponentReadyEvent()).toBeUndefined();
     });
-    it("should record a component ready if there is a session followed by an action", () => {
+    it('should record a component ready if there is a session followed by an action', () => {
       startSession(aggregator);
       recordAction(aggregator, panel);
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
       const componentReadyEvent = findComponentReadyEvent();
       expect(sentEvents.length).toEqual(2);
-      expect(componentReadyEvent.eType).toEqual("load");
+      expect(componentReadyEvent.eType).toEqual('load');
       expect(componentReadyEvent.componentReady).toEqual(true);
     });
-    it("should record the traceId if one is present", () => {
+    it('should record the traceId if one is present', () => {
       startSession(aggregator);
       recordAction(aggregator, panel);
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
 
       const actionEvent = findActionEvent();
@@ -777,11 +782,11 @@ describe('Aggregator', () => {
       expect(componentReadyEvent.pId).toEqual(actionEvent.eId);
       expect(componentReadyEvent.componentReady).toEqual(true);
     });
-    it("should record a start time equal to the action start time", () => {
+    it('should record a start time equal to the action start time', () => {
       startSession(aggregator);
       recordAction(aggregator, panel);
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
 
       const componentReadyEvent = findComponentReadyEvent();
@@ -791,76 +796,76 @@ describe('Aggregator', () => {
       expect(typeof componentReadyEvent.stop).toBe('number');
       expect(componentReadyEvent.componentReady).toEqual(true);
     });
-    it("should record component as ready multiple times per session", () => {
+    it('should record component as ready multiple times per session', () => {
       startSession(aggregator);
       recordAction(aggregator, panel);
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
       aggregator.recordComponentReady({
-        component: panel
+        component: panel,
       });
       expect(sentEvents.length).toEqual(3);
     });
   });
 
   describe('#getCurrentTraceId', () => {
-    it("should return null if no actions have been recorded", () => {
+    it('should return null if no actions have been recorded', () => {
       aggregator = createAggregator();
       expect(aggregator.getCurrentTraceId()).toBeNull();
     });
 
-    it("should return the traceId of the most recently recorded action", () => {
+    it('should return the traceId of the most recently recorded action', () => {
       aggregator = createAggregator();
       const firstTraceId = aggregator.recordAction({
         component: {},
-        description: "an action"
+        description: 'an action',
       });
       expect(aggregator.getCurrentTraceId()).toEqual(firstTraceId);
 
       const secondTraceId = aggregator.recordAction({
         component: {},
-        description: "an action"
+        description: 'an action',
       });
       expect(aggregator.getCurrentTraceId()).toEqual(secondTraceId);
     });
   });
 
-  describe("#getRallyRequestId", () => {
-    it("should find the RallyRequestId on an object", () => {
+  describe('#getRallyRequestId', () => {
+    it('should find the RallyRequestId on an object', () => {
       const response = {
         getResponseHeader: {
-          RallyRequestID: "myrequestid"
-        }
+          RallyRequestID: 'myrequestid',
+        },
       };
-      expect(getRallyRequestId(response)).toEqual("myrequestid");
+      expect(getRallyRequestId(response)).toEqual('myrequestid');
     });
-    it("should find the RallyRequestId from a function", () => {
+    it('should find the RallyRequestId from a function', () => {
       const response = {
-        getResponseHeader: stub().returns("myrequestid")
+        getResponseHeader: stub().returns('myrequestid'),
       };
-      expect(getRallyRequestId(response)).toEqual("myrequestid");
-      expect(response.getResponseHeader).toHaveBeenCalledWith("RallyRequestID");
+      expect(getRallyRequestId(response)).toEqual('myrequestid');
+      expect(response.getResponseHeader).toHaveBeenCalledWith('RallyRequestID');
     });
-    it("should not find a RallyRequestId if there is no getResponseHeader", () => {
+    it('should not find a RallyRequestId if there is no getResponseHeader', () => {
       const response = {};
       expect(getRallyRequestId(response)).toBeUndefined();
     });
-    it("should not find a RallyRequestId if there getResponseHeader is something else", () => {
+    it('should not find a RallyRequestId if there getResponseHeader is something else', () => {
       const response = {
-        getResponseHeader: 123
+        getResponseHeader: 123,
       };
       expect(getRallyRequestId(response)).toBeUndefined();
     });
-    it("should find a RallyRequestID if there is a headers method", () => {
+    it('should find a RallyRequestID if there is a headers method', () => {
       const response = {
-        headers: stub().returns("myrequestid")
+        headers: stub().returns('myrequestid'),
       };
-      expect(getRallyRequestId(response)).toEqual("myrequestid");
-      expect(response.headers).toHaveBeenCalledWith("RallyRequestID");
+      expect(getRallyRequestId(response)).toEqual('myrequestid');
+      expect(response.headers).toHaveBeenCalledWith('RallyRequestID');
     });
-    it("should find a RallyRequestId if its passed in as a string", () => {
-      expect(getRallyRequestId("ImARequestId")).toEqual("ImARequestId");
+    it('should find a RallyRequestId if its passed in as a string', () => {
+      expect(getRallyRequestId('ImARequestId')).toEqual('ImARequestId');
       expect(getRallyRequestId(123)).toBeUndefined();
     });
   });
@@ -873,13 +878,13 @@ describe('Aggregator', () => {
       const cmp = new Panel();
       aggregator.beginLoad({
         component: cmp,
-        description: "a load",
-        startTime: startTime
+        description: 'a load',
+        startTime: startTime,
       });
       aggregator.endLoad({
         component: cmp,
         stopTime: startTime + 1000,
-        whenLongerThan: 1000
+        whenLongerThan: 1000,
       });
       expect(sentEvents.length).toEqual(0);
     });
@@ -891,13 +896,13 @@ describe('Aggregator', () => {
       const cmp = new Panel();
       aggregator.beginLoad({
         component: cmp,
-        description: "a load",
-        startTime: startTime
+        description: 'a load',
+        startTime: startTime,
       });
       aggregator.endLoad({
         component: cmp,
         stopTime: startTime + 1001,
-        whenLongerThan: 1000
+        whenLongerThan: 1000,
       });
       expect(sentEvents.length).toEqual(1);
     });

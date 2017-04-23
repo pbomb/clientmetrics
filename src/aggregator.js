@@ -26,9 +26,9 @@ const getUniqueId = () => uuidV4();
  * becomes 1.27/Defect.js
  * @param url The url to clean up
  */
-const getUrl = (url) => {
+const getUrl = url => {
   if (!url) {
-    return "unknown";
+    return 'unknown';
   }
 
   const webserviceIndex = url.indexOf(WEBSERVICE_SLUG);
@@ -58,7 +58,7 @@ const getUrl = (url) => {
  * Sets the metrics Id property for the component with a generated uuid
  * @param cmp the component to get an ID for
  */
-const getComponentId = (cmp) => {
+const getComponentId = cmp => {
   if (!cmp[_metricsIdProperty]) {
     cmp[_metricsIdProperty] = getUniqueId();
   }
@@ -70,7 +70,7 @@ const getComponentId = (cmp) => {
  * Finds the RallyRequestId, if any, in the response sent back from the server
  * @param response the response that came back from an Ajax request
  */
-export const getRallyRequestId = (response) => {
+export const getRallyRequestId = response => {
   const headerName = 'RallyRequestID';
 
   if (response) {
@@ -153,12 +153,14 @@ class Aggregator {
 
     this.handlers = this.handlers || [];
 
-    this.sender = this.sender || new BatchSender({
-      keysToIgnore: [ 'cmp', 'component' ],
-      beaconUrl: config.beaconUrl,
-      disableSending: config.disableSending,
-      onSend: this._onSend
-    });
+    this.sender =
+      this.sender ||
+      new BatchSender({
+        keysToIgnore: ['cmp', 'component'],
+        beaconUrl: config.beaconUrl,
+        disableSending: config.disableSending,
+        onSend: this._onSend,
+      });
 
     if (typeof this.sender.getMaxLength === 'function') {
       this.maxErrorLength = Math.floor(this.sender.getMaxLength() * 0.9);
@@ -206,19 +208,24 @@ class Aggregator {
     const traceId = getUniqueId();
     this._actionStartTime = this.getRelativeTime(options.startTime);
 
-    const action = this._startEvent(assign({
-      eType: 'action',
-      cmp: cmp,
-      cmpH: options.hierarchy || this._getHierarchyString(cmp),
-      eDesc: options.description,
-      cmpId: getComponentId(cmp),
-      eId: traceId,
-      tId: traceId,
-      status: 'Ready',
-      cmpType: options.name || this.getComponentType(cmp),
-      start: this._actionStartTime,
-      stop: this._actionStartTime
-    }, options.miscData));
+    const action = this._startEvent(
+      assign(
+        {
+          eType: 'action',
+          cmp: cmp,
+          cmpH: options.hierarchy || this._getHierarchyString(cmp),
+          eDesc: options.description,
+          cmpId: getComponentId(cmp),
+          eId: traceId,
+          tId: traceId,
+          status: 'Ready',
+          cmpType: options.name || this.getComponentType(cmp),
+          start: this._actionStartTime,
+          stop: this._actionStartTime,
+        },
+        options.miscData,
+      ),
+    );
 
     this._currentTraceId = traceId;
     this._finishEvent(action);
@@ -242,15 +249,17 @@ class Aggregator {
 
       const startTime = this.getRelativeTime();
 
-      const errorEvent = this._startEvent(assign({}, miscData, {
-        error,
-        stack,
-        eType: 'error',
-        eId: getUniqueId(),
-        tId: traceId,
-        start: startTime,
-        stop: startTime
-      }));
+      const errorEvent = this._startEvent(
+        assign({}, miscData, {
+          error,
+          stack,
+          eType: 'error',
+          eId: getUniqueId(),
+          tId: traceId,
+          start: startTime,
+          stop: startTime,
+        }),
+      );
 
       this._finishEvent(errorEvent);
 
@@ -268,18 +277,20 @@ class Aggregator {
     const cmp = options.component;
     const cmpHierarchy = options.hierarchy || this._getHierarchyString(cmp);
 
-    const cmpReadyEvent = this._startEvent(assign({}, options.miscData, {
-      eType: 'load',
-      start: this._actionStartTime,
-      stop: this.getRelativeTime(options.stopTime),
-      eId: getUniqueId(),
-      tId: traceId,
-      pId: traceId,
-      cmpType: options.name || this.getComponentType(cmp),
-      cmpH: cmpHierarchy,
-      eDesc: 'component ready',
-      componentReady: true
-    }));
+    const cmpReadyEvent = this._startEvent(
+      assign({}, options.miscData, {
+        eType: 'load',
+        start: this._actionStartTime,
+        stop: this.getRelativeTime(options.stopTime),
+        eId: getUniqueId(),
+        tId: traceId,
+        pId: traceId,
+        cmpType: options.name || this.getComponentType(cmp),
+        cmpH: cmpHierarchy,
+        eDesc: 'component ready',
+        componentReady: true,
+      }),
+    );
 
     this._finishEvent(cmpReadyEvent);
   }
@@ -315,7 +326,7 @@ class Aggregator {
       cmpType: options.name || this.getComponentType(cmp),
       tId: traceId,
       pId: options.pId || traceId,
-      start: startTime
+      start: startTime,
     });
 
     if (options.description) {
@@ -324,7 +335,7 @@ class Aggregator {
     const data = this._startEvent(event);
     return {
       data,
-      end: (options) => {
+      end: options => {
         options = options || {};
         options.stop = this.getRelativeTime(options.stopTime);
 
@@ -332,7 +343,7 @@ class Aggregator {
           const newEventData = assign({ status: 'Ready' }, omit(options, ['stopTime']));
           this._finishEvent(data, newEventData);
         }
-      }
+      },
     };
   }
 
@@ -373,7 +384,7 @@ class Aggregator {
       cmpType: this.getComponentType(cmp),
       tId: traceId,
       pId: this._findParentId(cmp, traceId),
-      start: startTime
+      start: startTime,
     });
     this._startEvent(event);
   }
@@ -441,17 +452,24 @@ class Aggregator {
       const ajaxRequestId = getUniqueId();
       requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
 
-      this._startEvent(assign({}, miscData, {
-        eType: 'dataRequest',
-        cmp: requester,
-        cmpH: this._getHierarchyString(requester),
-        url: getUrl(url),
-        cmpType: this.getComponentType(requester),
-        cmpId: getComponentId(requester),
-        eId: eventId,
-        tId: traceId,
-        pId: parentId
-      }, miscData));
+      this._startEvent(
+        assign(
+          {},
+          miscData,
+          {
+            eType: 'dataRequest',
+            cmp: requester,
+            cmpH: this._getHierarchyString(requester),
+            url: getUrl(url),
+            cmpType: this.getComponentType(requester),
+            cmpId: getComponentId(requester),
+            eId: eventId,
+            tId: traceId,
+            pId: parentId,
+          },
+          miscData,
+        ),
+      );
 
       // NOTE: this looks wrong, but it's not. :)
       // This client side dataRequest event is going to be
@@ -462,8 +480,8 @@ class Aggregator {
         requestId: ajaxRequestId,
         xhrHeaders: {
           'X-Trace-Id': traceId,
-          'X-Parent-Id': eventId
-        }
+          'X-Parent-Id': eventId,
+        },
       };
     }
 
@@ -496,7 +514,7 @@ class Aggregator {
 
       const newEventData = {
         status: 'Ready',
-        stop: this.getRelativeTime()
+        stop: this.getRelativeTime(),
       };
       const rallyRequestId = getRallyRequestId(xhr);
 
@@ -567,9 +585,9 @@ class Aggregator {
 
   _getFilteredStackTrace(e, miscData = {}) {
     const stackList = (e.stack || miscData.stack || '').split('\n');
-    const filteredStack = this.ignoreStackMatcher ?
-      stackList.filter(stack => !this.ignoreStackMatcher.test(stack)) :
-      stackList;
+    const filteredStack = this.ignoreStackMatcher
+      ? stackList.filter(stack => !this.ignoreStackMatcher.test(stack))
+      : stackList;
     return filteredStack.slice(0, this.stackLimit).join('\n');
   }
 
@@ -641,7 +659,7 @@ class Aggregator {
   _getFromHandlers(cmp, methodName) {
     let result = null;
 
-    forEach(this.handlers, (handler) => {
+    forEach(this.handlers, handler => {
       result = handler[methodName](cmp);
       return !result;
     });
@@ -658,9 +676,13 @@ class Aggregator {
     const hierarchy = this._getHierarchy(sourceCmp);
     let eventId = traceId;
 
-    forEach(hierarchy, (cmp) => {
-      const parentEvent = this._findLastEvent((event) => {
-        return event.eType !== 'dataRequest' && (event.cmp === cmp || event.cmp === sourceCmp) && event.tId === traceId;
+    forEach(hierarchy, cmp => {
+      const parentEvent = this._findLastEvent(event => {
+        return (
+          event.eType !== 'dataRequest' &&
+          (event.cmp === cmp || event.cmp === sourceCmp) &&
+          event.tId === traceId
+        );
       });
       if (parentEvent) {
         eventId = parentEvent.eId;
@@ -677,7 +699,11 @@ class Aggregator {
 
     while (cmpType) {
       hierarchy.push(cmp);
-      cmp = cmp.clientMetricsParent || cmp.ownerCt || cmp.owner || (cmp.initialConfig && cmp.initialConfig.owner);
+      cmp =
+        cmp.clientMetricsParent ||
+        cmp.ownerCt ||
+        cmp.owner ||
+        (cmp.initialConfig && cmp.initialConfig.owner);
       cmpType = cmp && this.getComponentType(cmp);
     }
 
@@ -720,9 +746,9 @@ class Aggregator {
   }
 
   _shouldRecordEvent(existingEvent, options) {
-    if (options.whenLongerThan && (options.stop - existingEvent.start) <= options.whenLongerThan) {
-        this._pendingEvents = this._pendingEvents.filter(ev => ev !== existingEvent);
-        return false;
+    if (options.whenLongerThan && options.stop - existingEvent.start <= options.whenLongerThan) {
+      this._pendingEvents = this._pendingEvents.filter(ev => ev !== existingEvent);
+      return false;
     }
 
     return true;

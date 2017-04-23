@@ -9,9 +9,18 @@
     "test": "jest src",
     "build": "webpack --progress --config webpack.dev.config.js && webpack --progress --config webpack.prod.config.js && webpack --progress --config webpack.sdk.config.js",
     "build:test": "webpack --debug --progress --config webpack.test.config.js",
+    "lint:staged": "lint-staged",
+    "prettier": "prettier --write --print-width=100 --single-quote=true --trailing-comma=all --parser=flow 'src/**/*.js'",
     "webpack:analyze": "webpack --debug --progress --config webpack.dev.config.js --json > webpack-stats.json",
     "prepublish": "npm run build && npm run test && npm run docs"
   },
+  "lint-staged": {
+    "*.js": [
+      "prettier --write --print-width 100 --single-quote true --trailing-comma all --parser flow",
+      "git add"
+    ]
+  },
+  "pre-commit": "lint:staged",
   "repository": {
     "type": "git",
     "url": "https://github.com/RallySoftware/clientmetrics.git"
@@ -57,6 +66,9 @@
     "grunt-jsdoc": "2.1.0",
     "grunt-release": "0.14.0",
     "jest": "19.0.2",
+    "lint-staged": "3.4.0",
+    "pre-commit": "1.2.2",
+    "prettier": "1.2.2",
     "sinon": "2.1.0",
     "webpack": "2.3.2"
   },

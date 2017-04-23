@@ -9,8 +9,8 @@ const defaultConfig = {
   keysToIgnore: [],
   minNumberOfEvents: MIN_NUMBER_OF_EVENTS,
   maxNumberOfEvents: MAX_NUMBER_OF_EVENTS,
-  beaconUrl: "https://trust.f4tech.com/beacon/",
-  onSend: () => {}
+  beaconUrl: 'https://trust.f4tech.com/beacon/',
+  onSend: () => {},
 };
 
 /**
@@ -32,8 +32,8 @@ const appendIndexToKeys = (event, index) => {
   }, {});
 };
 
-const useRequestIdle = (callback) => window.requestIdleCallback(callback, 1000);
-const useSetTimeout = (callback) => window.setTimeout(callback, 1000);
+const useRequestIdle = callback => window.requestIdleCallback(callback, 1000);
+const useSetTimeout = callback => window.setTimeout(callback, 1000);
 
 /**
  * A helper object for {@link Aggregator} whose
@@ -52,7 +52,9 @@ const useSetTimeout = (callback) => window.setTimeout(callback, 1000);
 class CorsBatchSender {
   constructor(config) {
     this._disableClientMetrics = this._disableClientMetrics.bind(this);
-    this.sendDeferred = typeof window.requestIdleCallback === 'function' ? useRequestIdle : useSetTimeout;
+    this.sendDeferred = typeof window.requestIdleCallback === 'function'
+      ? useRequestIdle
+      : useSetTimeout;
     assign(this, defaultConfig, config);
 
     this._disabled = false;
@@ -132,7 +134,7 @@ class CorsBatchSender {
       } else {
         this._disableClientMetrics();
       }
-    } catch(e) {
+    } catch (e) {
       this._disableClientMetrics();
     }
   }
