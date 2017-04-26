@@ -223,8 +223,8 @@ class Aggregator {
           start: this._actionStartTime,
           stop: this._actionStartTime,
         },
-        options.miscData,
-      ),
+        options.miscData
+      )
     );
 
     this._currentTraceId = traceId;
@@ -258,7 +258,7 @@ class Aggregator {
           tId: traceId,
           start: startTime,
           stop: startTime,
-        }),
+        })
       );
 
       this._finishEvent(errorEvent);
@@ -289,7 +289,7 @@ class Aggregator {
         cmpH: cmpHierarchy,
         eDesc: 'component ready',
         componentReady: true,
-      }),
+      })
     );
 
     this._finishEvent(cmpReadyEvent);
@@ -467,8 +467,8 @@ class Aggregator {
             tId: traceId,
             pId: parentId,
           },
-          miscData,
-        ),
+          miscData
+        )
       );
 
       // NOTE: this looks wrong, but it's not. :)

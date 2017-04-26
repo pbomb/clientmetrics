@@ -2,21 +2,22 @@
   "name": "rally-clientmetrics",
   "version": "6.0.2",
   "description": "Metrics aggregation for Rally Software",
-  "main": "src/main.js",
+  "main": "dist/rallymetrics.cjs.js",
+  "jsnext:main": "dist/rallymetrics.es.js",
+  "module": "dist/rallymetrics.es.js",
   "scripts": {
     "lint": "eslint src",
     "docs": "grunt jsdoc",
     "test": "jest src",
-    "build": "webpack --progress --config webpack.dev.config.js && webpack --progress --config webpack.prod.config.js && webpack --progress --config webpack.sdk.config.js",
-    "build:test": "webpack --debug --progress --config webpack.test.config.js",
+    "build": "rollup --config --environment FORMAT:es && rollup --config --environment FORMAT:cjs && rollup --config --environment FORMAT:umd && rollup --config --environment MINIFY,FORMAT:umd",
     "lint:staged": "lint-staged",
-    "prettier": "prettier --write --print-width=100 --single-quote=true --trailing-comma=all --parser=flow 'src/**/*.js'",
+    "prettier": "prettier --write --print-width=100 --single-quote=true --trailing-comma=es5 --parser=flow 'src/**/*.js' 'rollup.config.js'",
     "webpack:analyze": "webpack --debug --progress --config webpack.dev.config.js --json > webpack-stats.json",
     "prepublish": "npm run build && npm run test && npm run docs"
   },
   "lint-staged": {
     "*.js": [
-      "prettier --write --print-width 100 --single-quote true --trailing-comma all --parser flow",
+      "prettier --write --print-width 100 --single-quote true --trailing-comma es5 --parser flow",
       "git add"
     ]
   },
@@ -41,7 +42,7 @@
     "url": "https://github.com/RallySoftware/clientmetrics/issues"
   },
   "files": [
-    "builds",
+    "dist",
     "doc",
     "src"
   ],
@@ -50,6 +51,7 @@
     "babel-eslint": "7.2.1",
     "babel-jest": "19.0.0",
     "babel-loader": "6.4.1",
+    "babel-plugin-external-helpers": "6.22.0",
     "babel-plugin-transform-es2015-modules-commonjs": "6.24.0",
     "babel-polyfill": "6.23.0",
     "babel-preset-env": "1.3.2",
@@ -69,6 +71,13 @@
     "lint-staged": "3.4.0",
     "pre-commit": "1.2.2",
     "prettier": "1.2.2",
+    "rollup": "0.41.6",
+    "rollup-plugin-babel": "2.7.1",
+    "rollup-plugin-commonjs": "8.0.2",
+    "rollup-plugin-json": "2.1.1",
+    "rollup-plugin-node-resolve": "3.0.0",
+    "rollup-plugin-replace": "1.1.1",
+    "rollup-plugin-uglify": "1.0.2",
     "sinon": "2.1.0",
     "webpack": "2.3.2"
   },

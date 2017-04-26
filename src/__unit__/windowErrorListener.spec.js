@@ -28,7 +28,7 @@ describe('WindowErrorListener', () => {
     window.onerror(message, filename, lineno);
     expect(aggregator.recordError).toHaveBeenCalledWith(
       message + ', ' + filename + ':' + lineno,
-      {},
+      {}
     );
   });
 
@@ -65,7 +65,7 @@ describe('WindowErrorListener', () => {
       .join('\n');
     window.onerror(message, filename, lineno, colno, { stack });
     expect(aggregator.recordError.args[0][1].stack).toBe(
-      stack.split('\n').slice(0, stackLimit).join('\n'),
+      stack.split('\n').slice(0, stackLimit).join('\n')
     );
   });
 

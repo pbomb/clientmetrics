@@ -27,8 +27,8 @@
 .redcar
 .settings
 .tmp*
-builds
 classes
+dist
 lib
 out
 projectFilesBackup

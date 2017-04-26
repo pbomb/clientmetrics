@@ -95,7 +95,7 @@ const createAggregator = config => {
       sender: createSender(),
       handlers: [handler],
     },
-    config,
+    config
   );
   return new Aggregator(aggregatorConfig);
 };

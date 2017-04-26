@@ -11,8 +11,8 @@ const createSender = (config = {}) => {
       {
         beaconUrl: 'totallyfakeurl',
       },
-      config,
-    ),
+      config
+    )
   );
 };
 
