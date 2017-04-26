@@ -32,7 +32,7 @@ const appendIndexToKeys = (event, index) => {
   }, {});
 };
 
-const useRequestIdle = callback => window.requestIdleCallback(callback, 1000);
+const useRequestIdle = callback => window.requestIdleCallback(callback, { timeout: 1000 });
 const useSetTimeout = callback => window.setTimeout(callback, 1000);
 
 /**
