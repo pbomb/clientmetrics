@@ -27,6 +27,7 @@
 .redcar
 .settings
 .tmp*
+.vscode
 classes
 dist
 lib
@@ -35,7 +36,6 @@ projectFilesBackup
 target
 spec/javascripts/
 node_modules/
-.grunt/
 _SpecRunner.html
 bundle.js
 test/rallymetrics-test*

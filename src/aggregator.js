@@ -1,6 +1,10 @@
-import BatchSender from './corsBatchSender';
-import { assign, forEach, omit } from './util';
+// @ts-check
+/**
+ * @module
+ */
 import uuidV4 from 'uuid/v4';
+import BatchSender from './corsBatchSender';
+import { assign, omit } from './util';
 
 // The default for max number of errors we will send per session.
 const DEFAULT_ERROR_LIMIT = 25;
@@ -8,104 +12,24 @@ const DEFAULT_ERROR_LIMIT = 25;
 // The default number of lines to keep in error stack traces
 const DEFAULT_STACK_LIMIT = 20;
 
-// bookkeeping properties that are set on components being measured
-const _currentEventId = '__clientMetricsCurrentEventId__';
-const _metricsIdProperty = '__clientMetricsID__';
-const WEBSERVICE_SLUG = 'webservice/';
-
 /**
  * Creates a version 4 UUID
+ * @private
  */
 const getUniqueId = () => uuidV4();
 
-/**
- * Massages the AJAX url into a smaller form. Strips away the host and query
- * parameters.
- *
- * Example: http://server/slm/webservice/1.27/Defect.js?foo=bar&baz=buzz
- * becomes 1.27/Defect.js
- * @param url The url to clean up
- */
-const getUrl = url => {
-  if (!url) {
-    return 'unknown';
-  }
-
-  const webserviceIndex = url.indexOf(WEBSERVICE_SLUG);
-  let questionIndex;
-
-  if (webserviceIndex !== -1) {
-    questionIndex = url.indexOf('?', webserviceIndex);
-
-    if (questionIndex === -1) {
-      questionIndex = url.length;
-    }
-
-    const skip = WEBSERVICE_SLUG.length;
-    return url.substring(webserviceIndex + skip, questionIndex);
-  } else {
-    questionIndex = url.indexOf('?');
-
-    if (questionIndex === -1) {
-      return url;
-    }
-
-    return url.substring(0, questionIndex);
-  }
-};
+const shouldRecordEvent = event =>
+  !event.whenLongerThan || event.stop - event.start > event.whenLongerThan;
 
 /**
- * Sets the metrics Id property for the component with a generated uuid
- * @param cmp the component to get an ID for
- */
-const getComponentId = cmp => {
-  if (!cmp[_metricsIdProperty]) {
-    cmp[_metricsIdProperty] = getUniqueId();
-  }
-
-  return cmp[_metricsIdProperty];
-};
-
-/**
- * Finds the RallyRequestId, if any, in the response sent back from the server
- * @param response the response that came back from an Ajax request
- */
-export const getRallyRequestId = response => {
-  const headerName = 'RallyRequestID';
-
-  if (response) {
-    if (typeof response === 'string') {
-      return response;
-    } else if (response.responseHeaders && response.responseHeaders.RallyRequestID) {
-      return response.responseHeaders.RallyRequestID;
-    } else if (typeof response.getResponseHeader === 'function') {
-      return response.getResponseHeader(headerName);
-    } else if (response.getResponseHeader && response.getResponseHeader[headerName]) {
-      return response.getResponseHeader[headerName];
-    } else if (typeof response.headers === 'function') {
-      // support for Angular, which does not expose a standard XHR object
-      return response.headers(headerName);
-    }
-  }
-};
-
-/**
- * An aggregator that listens to all client metric related messages that go out on
- * the message bus and creates a cohesive picture of what is happening, then pushes
- * this data out to an endpoint which collects the data for analysis
+ * An aggregator that exposes methods to record client metrics and send the data
+ * to an endpoint which collects the data for analysis
  *
  * ## Aggregator specific terminology
  *
- * * **event:** A distinct, measurable thing that the page did or the user invoked. For example, clicking on a button,
- * a panel loading, or a grid resorting are all events
+ * * **event:** A distinct, measurable thing that the page did or the user invoked.
+ *     For example, clicking on a button, a panel loading, or a grid resorting are all events
  * * **handler:** A helper object that helps the aggregator identify where events came from.
- * * **status:** What was the ultimate fate of an event? If a panel fully loads and becomes fully usable, the event associated
- * with the panel load will have the status of "Ready". If the user navigates away from the page before the panel
- * finishes loading, the associated event's conclusion will be "Navigation". Current conclusion values are:
- *     - Ready: the event concluded normally
- *     - Navigation: the user navigated away before the event could complete
- *     - Timeout: (Not yet implemented), indicates a load event took too long
- *
  *
  *  NOTE: Most properties are short acronyms:
  *  * bts -- browser time stamp
@@ -116,31 +40,32 @@ export const getRallyRequestId = response => {
  *  * eType -- event type (ie load, action or dataRequest)
  *  * eDesc -- event description
  *  * cmpType -- component type
- *  * cmpId -- component ID
  *  * uId -- user id
  *  * sId -- subscription id
  *
- * Config options:
- *  * stackLimit - maximum number of stack trace lines recorded when an error occurs
- *  * ignoreStackMatcher - stack trace lines that match this regex are ignored,
- *    use this option when the relevant stack trace lines don't fit within stackLimit,
- *    for example to ignore stack lines from within React: `ignoreStackMatcher = /(getNativeNode|updateChildren|updateComponent|receiveComponent)/`
- *
  * @constructor
  * @param {Object} config Configuration object
+ * @param {String} [config.beaconUrl] Beacon URL where client metrics should be sent.
+ * @param {Boolean} [config.disableSending=false] Set to true to disable sending
+ *   client metrics to the beacon
+ * @param {Number} [config.errorLimit=25] The max number of errors to report per session. When this
+ *   amount is exceeded, recorded errors are dropped.
+ * @param {Number} [config.flushInterval] If defined, events will be sent at least that often.
+ * @param {Regexp} [config.ignoreStackMatcher] Regular expression that, if provided, will remove
+ *   matching lines from stack traces when recording JS errors.
+ *   For example to ignore stack lines from within React:
+ *   `ignoreStackMatcher = /(getNativeNode|updateChildren|updateComponent|receiveComponent)/`
  * @param {Object} [config.sender = BatchSender] Which sender to use. By default,
  *   a BatchSender will be used.
- * @param {Number} [config.flushInterval] If defined, events will be sent at least that often.
- * @param {String} [config.beaconUrl = "https://trust.f4tech.com/beacon/"] URL where the beacon is located.
+ * @param {Number} [config.stackLimit=50] The number of lines to keep in error stack traces
  */
 class Aggregator {
-  constructor(config) {
+  constructor(config = {}) {
     this.sendAllRemainingEvents = this.sendAllRemainingEvents.bind(this);
     this._onSend = this._onSend.bind(this);
-    assign(this, config);
+    this._flushInterval = config.flushInterval;
+    this._ignoreStackMatcher = config.ignoreStackMatcher;
     this._actionStartTime = null;
-    this._sessionStartTime = null;
-    this._pendingEvents = [];
     this._browserTabId = getUniqueId();
     this._startingTime = Date.now();
     this._currentTraceId = null;
@@ -148,15 +73,13 @@ class Aggregator {
     // keep track of how many errors we have reported on, so we
     // can stop after a while and not flood the beacon
     this._errorCount = 0;
-    this.errorLimit = this.errorLimit || DEFAULT_ERROR_LIMIT;
-    this.stackLimit = this.stackLimit || DEFAULT_STACK_LIMIT;
-
-    this.handlers = this.handlers || [];
+    this._errorLimit = config.errorLimit || DEFAULT_ERROR_LIMIT;
+    this._stackLimit = config.stackLimit || DEFAULT_STACK_LIMIT;
 
     this.sender =
-      this.sender ||
+      config.sender ||
       new BatchSender({
-        keysToIgnore: ['cmp', 'component'],
+        keysToIgnore: ['cmp', 'component', 'whenLongerThan'],
         beaconUrl: config.beaconUrl,
         disableSending: config.disableSending,
         onSend: this._onSend,
@@ -170,6 +93,7 @@ class Aggregator {
   }
 
   /**
+   * Destroys and cleans up the aggregator. If a flushInterval was provided, that will stop.
    * @public
    */
   destroy() {
@@ -177,22 +101,24 @@ class Aggregator {
   }
 
   /**
-   * Handles the starting of a new "session"
-   * Finishes and sends off pending events with a Navigation status
-   * Resets current parent events queue, starting time, and current hash
-   * Calls a new navigation user action
-   * @param status the event's status for each of the pending events
-   * @param defaultParams Default parameters that are sent with each request
-   * @param defaultParams.sessionStart start time for this session - defaults
-   *   to now, but can be set if actual start is before library is initialized
+   * Drops any unfinshed events on the floor and resets the error count. Allows different
+   * default params to be included with each event sent after this call completes.
+   * Any events that have not been sent to the beacon will be sent at this time.
+   * @param {Object} [defaultParams={}] Key/Value pairs of parameters that will be included
+   *   with each event
+   * @param {Number} [defaultParams.sessionStart] start time for this session - defaults
+   *   to now, but can be set if actual start is before library is initialized. For example,
+   *   if you'd like to back-date the session start time to when the full page started loading,
+   *   before the library has been loaded, you might supply that value.
    * @public
    */
-  startSession(status, defaultParams = {}) {
-    this._pendingEvents = [];
+  startSession(_deprecated_, defaultParams = {}) {
+    if (arguments.length === 1) {
+      defaultParams = _deprecated_ || {}; // eslint-disable-line no-param-reassign
+    }
     if (defaultParams && defaultParams.sessionStart) {
       this._startingTime = defaultParams.sessionStart;
     }
-    this._sessionStartTime = this.getRelativeTime();
     this.sendAllRemainingEvents();
     this._defaultParams = omit(defaultParams, ['sessionStart']);
 
@@ -201,7 +127,19 @@ class Aggregator {
   }
 
   /**
-   * Handles the action client metrics message. Starts and completes a client metric event
+   * Starts a new trace and records an event of type _action_. The new trace ID will also be
+   * this event's ID.
+   * @param {Object} options
+   * @param {String} options.hierarchy The component hierarchy. This can be whatever format works
+   *   for your beacon. An example format is `component:parent_component:grandparent_component`.
+   *   Populates the `cmpH` field
+   * @param {String} options.description The name of the event. Example: `submitted login form`.
+   *   Populates the `eDesc` field
+   * @param {String} options.name The name of the component. Populates the `cmpType` field
+   * @param {Number} [options.startTime=now] When this action happened. Usually, you won't
+   *   provide a value here and the library will use the time of this function call.
+   * @param {Object} [options.miscData] Key/Value pairs for any other fields you would like
+   *   added to the event.
    */
   recordAction(options) {
     const cmp = options.component;
@@ -212,14 +150,12 @@ class Aggregator {
       assign(
         {
           eType: 'action',
-          cmp: cmp,
-          cmpH: options.hierarchy || this._getHierarchyString(cmp),
+          cmp,
+          cmpH: options.hierarchy,
           eDesc: options.description,
-          cmpId: getComponentId(cmp),
           eId: traceId,
           tId: traceId,
-          status: 'Ready',
-          cmpType: options.name || this.getComponentType(cmp),
+          cmpType: options.name,
           start: this._actionStartTime,
           stop: this._actionStartTime,
         },
@@ -233,6 +169,13 @@ class Aggregator {
     return traceId;
   }
 
+  /**
+   * Records an event of type _error_.
+  * Any events that have not been sent to the beacon will be sent at this time.
+   * @param {Error|String} e The Error object or string message.
+   * @param {Object} [miscData={}] Key/Value pairs for any other fields you would like
+   *   added to the event.
+   */
   recordError(e, miscData = {}) {
     let error;
     if (typeof e === 'string') {
@@ -244,8 +187,8 @@ class Aggregator {
     const stack = this._getFilteredStackTrace(e, miscData);
     const traceId = this._currentTraceId;
 
-    if (traceId && this._errorCount < this.errorLimit) {
-      ++this._errorCount;
+    if (traceId && this._errorCount < this._errorLimit) {
+      this._errorCount += 1;
 
       const startTime = this.getRelativeTime();
 
@@ -268,14 +211,36 @@ class Aggregator {
     }
   }
 
+  /**
+   * Records an event of type _load_ with `eDesc`=`component ready`. The `start` field will
+   *   have the same value as the last action's start value. The `componentReady` field will
+   *   be set to `true`.
+   *
+   * This function is useful for logging importing point-in-time events, like when a component is
+   * fully loaded. This event will be given a duration so that you can see how long it took
+   * to become ready since the user/system action was performed. A useful scenario is for
+   * recording when React containers have finished loading.
+   *
+   * @param {Object} options
+   * @param {String} options.hierarchy The component hierarchy. This can be whatever format works
+   *   for your beacon. An example format is `component:parent_component:grandparent_component`.
+   *   Populates the `cmpH` field
+   * @param {String} options.description The name of the event. Example: `submitted login form`.
+   *   Populates the `eDesc` field
+   * @param {String} options.name The name of the component. Populates the `cmpType` field
+   * @param {Number} [options.stopTime=now] When this component ready really happened.
+   *   Usually, you won't provide a value here and the library will use the time of this function
+   *   call. Populates the `stop` field.
+   * @param {Object} [options.miscData] Key/Value pairs for any other fields you would like
+   *   added to the event.
+   */
   recordComponentReady(options) {
-    if (this._sessionStartTime === null || this._actionStartTime === null) {
+    if (this._actionStartTime === null) {
       return;
     }
 
     const traceId = this._currentTraceId;
-    const cmp = options.component;
-    const cmpHierarchy = options.hierarchy || this._getHierarchyString(cmp);
+    const cmpHierarchy = options.hierarchy;
 
     const cmpReadyEvent = this._startEvent(
       assign({}, options.miscData, {
@@ -285,7 +250,7 @@ class Aggregator {
         eId: getUniqueId(),
         tId: traceId,
         pId: traceId,
-        cmpType: options.name || this.getComponentType(cmp),
+        cmpType: options.name,
         cmpH: cmpHierarchy,
         eDesc: 'component ready',
         componentReady: true,
@@ -296,34 +261,43 @@ class Aggregator {
   }
 
   /**
-   * Starts a span and returns an object with the data and a
+   * Starts a span (event) and returns an object with the data and a
    * function to call to end and record the span. Spans that are not
    * yet ended when a new action is recorded will be dropped.
    * @param {Object} options Information to add to the span
    * @param {Object} options.component The component recording the span
    * @param {String} options.description The description of the load
    * @param {String} [options.hierarchy] The component hierarchy
-   * @param {String} [options.name] The name of the component. If not passed, will attempt to determine the name
+   * @param {String} [options.name] The name of the component. If not passed, will attempt to
+   *   determine the name
    * @param {String} [options.type = 'load'] The type of span. One of 'load' or 'dataRequest'
    * @param {Number} [options.startTime = Date.now()] The start time of the span
-   * @param {Object} [options.miscData] Any other data that should be recorded with the span
+   * @param {Object} [options.miscData] Key/Value pairs for any other fields you would like
+   *   added to the event.
+   * @returns {Object} Object with the following properties:
+   *   * **data**: The created span data
+   *   * **end**: A function to call when the span should be ended and sent to the beacon. An
+   *     options object can be passed to the `end` function containing key/value pairs to be
+   *     included with the event and also a `stopTime` to indicate if the event ended at a
+   *     different time than now. It can also include a `whenLongerThan` number to indicate
+   *     the number of ms that the event must be longer than or it will not be sent.
    */
   startSpan(options) {
     const cmp = options.component;
     const traceId = this._currentTraceId;
 
     if (!traceId) {
-      return;
+      return null;
     }
 
     const startTime = this.getRelativeTime(options.startTime);
     const eventId = getUniqueId();
     const event = assign({}, options.miscData, {
       eType: options.type || 'load',
-      cmp: cmp,
-      cmpH: options.hierarchy || this._getHierarchyString(cmp),
+      cmp,
+      cmpH: options.hierarchy,
       eId: eventId,
-      cmpType: options.name || this.getComponentType(cmp),
+      cmpType: options.name,
       tId: traceId,
       pId: options.pId || traceId,
       start: startTime,
@@ -335,234 +309,32 @@ class Aggregator {
     const data = this._startEvent(event);
     return {
       data,
-      end: options => {
-        options = options || {};
-        options.stop = this.getRelativeTime(options.stopTime);
-
-        if (this._shouldRecordEvent(data, options)) {
-          const newEventData = assign({ status: 'Ready' }, omit(options, ['stopTime']));
-          this._finishEvent(data, newEventData);
-        }
+      end: (endOptions = {}) => {
+        const newEventData = assign(
+          {
+            stop: this.getRelativeTime(endOptions.stopTime),
+          },
+          omit(endOptions, ['stopTime'])
+        );
+        this._finishEvent(data, newEventData);
       },
     };
   }
 
   /**
-   * Starts a span of type "load", tracked on the passed-in component.
-   * Calling "endLoad" with the same component will record the span
-   * @param {Object} options Information to add to the event
-   * @param {Object} options.component The component recording the event
-   * @param {Number} [options.startTime = Date.now()] The start time of the event
-   * @param {String} options.description The description of the load
-   * @param {Object} [options.miscData] Any other data that should be recorded with the event
-   */
-  beginLoad(options) {
-    const cmp = options.component;
-    const traceId = this._currentTraceId;
-
-    if (!traceId) {
-      return;
-    }
-
-    if (cmp[_currentEventId + 'load']) {
-      // already an in flight load event, so going to bail on this one
-      return;
-    }
-
-    const startTime = this.getRelativeTime(options.startTime);
-
-    const eventId = getUniqueId();
-    cmp[_currentEventId + 'load'] = eventId;
-
-    const event = assign({}, options.miscData, {
-      eType: 'load',
-      cmp: cmp,
-      cmpH: this._getHierarchyString(cmp),
-      eDesc: options.description,
-      cmpId: getComponentId(cmp),
-      eId: eventId,
-      cmpType: this.getComponentType(cmp),
-      tId: traceId,
-      pId: this._findParentId(cmp, traceId),
-      start: startTime,
-    });
-    this._startEvent(event);
-  }
-
-  /**
-   * Handles the endLoad client metrics message. Finishes an event
-   * @param {Object} options Information to add to the event
-   * @param {Object} options.component The component recording the event
-   * @param {Number} [options.stopTime = Date.now()] The stop time of the event
-   * @param {Number} [options.whenLongerThan] If specified, the event will be dropped if it did not take longer than
-   * this value. Specified in milliseconds.
-   */
-  endLoad(options) {
-    const cmp = options.component;
-
-    const eventId = cmp[_currentEventId + 'load'];
-
-    if (!eventId) {
-      // load end found without a load begin, not much can be done with it
-      return;
-    }
-
-    delete cmp[_currentEventId + 'load'];
-
-    const event = this._findPendingEvent(eventId);
-
-    if (!event) {
-      // if we didn't find a pending event, then the load begin happened before the
-      // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
-      // just ignoring it.
-      return;
-    }
-
-    options.stop = this.getRelativeTime(options.stopTime);
-
-    if (this._shouldRecordEvent(event, options)) {
-      const newEventData = assign({ status: 'Ready' }, omit(options, ['stopTime']));
-      this._finishEvent(event, newEventData);
-    }
-  }
-
-  /**
-   * Handler for before Ajax requests go out. Starts an event for the request,
-   *
-   * returns an object containting requestId and xhrHeaders
-   *  -- requestId should be fed back into endDataRequest to associate the two calls
-   *  -- xhrHeaders contains headers that should be added to the AJAX data request
-   *
-   * returns undefined if the data request could not be instrumented
-   */
-  beginDataRequest(requester, url, miscData) {
-    let options, metricsData;
-    if (arguments.length === 1) {
-      options = arguments[0];
-      requester = options.requester;
-      url = options.url;
-      miscData = options.miscData;
-    }
-
-    const traceId = this._currentTraceId;
-
-    if (requester && traceId) {
-      const eventId = getUniqueId();
-      const parentId = this._findParentId(requester, traceId);
-      const ajaxRequestId = getUniqueId();
-      requester[_currentEventId + 'dataRequest' + ajaxRequestId] = eventId;
-
-      this._startEvent(
-        assign(
-          {},
-          miscData,
-          {
-            eType: 'dataRequest',
-            cmp: requester,
-            cmpH: this._getHierarchyString(requester),
-            url: getUrl(url),
-            cmpType: this.getComponentType(requester),
-            cmpId: getComponentId(requester),
-            eId: eventId,
-            tId: traceId,
-            pId: parentId,
-          },
-          miscData
-        )
-      );
-
-      // NOTE: this looks wrong, but it's not. :)
-      // This client side dataRequest event is going to be
-      // the "parent" of the server side event that responds.
-      // So in the request headers, sending the current event Id as
-      // the parent Id.
-      metricsData = {
-        requestId: ajaxRequestId,
-        xhrHeaders: {
-          'X-Trace-Id': traceId,
-          'X-Parent-Id': eventId,
-        },
-      };
-    }
-
-    return metricsData;
-  }
-
-  /**
-   * handler for after the Ajax request has finished. Finishes an event for the data request
-   */
-  endDataRequest(requester, xhr, requestId) {
-    let options;
-
-    if (arguments.length === 1) {
-      options = arguments[0];
-      requester = options.requester;
-      xhr = options.xhr;
-      requestId = options.requestId;
-    }
-
-    if (requester) {
-      const eventId = requester[_currentEventId + 'dataRequest' + requestId];
-
-      const event = this._findPendingEvent(eventId);
-      if (!event) {
-        // if we didn't find a pending event, then the request started before the
-        // aggregator was ready or a new session was started. Since this load is beyond the scope of the aggregator,
-        // just ignoring it.
-        return;
-      }
-
-      const newEventData = {
-        status: 'Ready',
-        stop: this.getRelativeTime(),
-      };
-      const rallyRequestId = getRallyRequestId(xhr);
-
-      if (rallyRequestId) {
-        newEventData.rallyRequestId = rallyRequestId;
-      }
-
-      this._finishEvent(event, newEventData);
-    }
-  }
-
-  /**
-   * Causes the sender to purge all events it may still have in its queue.
+   * Causes the batch sender to send all events it still has in its queue.
    * Typically done when the user navigates somewhere
    */
   sendAllRemainingEvents() {
     this.sender.flush();
   }
 
-  getComponentType(cmp) {
-    return this._getFromHandlers(cmp.singleton || cmp, 'getComponentType');
-  }
-
   getDefaultParams() {
     return this._defaultParams;
   }
 
-  getSessionStartTime() {
-    return this._sessionStartTime;
-  }
-
   getCurrentTraceId() {
     return this._currentTraceId;
-  }
-
-  /**
-   * Add a handler
-   * @param {Object} handler The new handler
-   * @param {Number} [index] The index to insert the new handler in the handlers collection.
-   * If not specified it will be added to the end.
-   * @public
-   */
-  addHandler(handler, index) {
-    if (arguments.length === 2) {
-      this.handlers.splice(index, 0, handler);
-    } else {
-      this.handlers.push(handler);
-    }
   }
 
   /**
@@ -585,10 +357,10 @@ class Aggregator {
 
   _getFilteredStackTrace(e, miscData = {}) {
     const stackList = (e.stack || miscData.stack || '').split('\n');
-    const filteredStack = this.ignoreStackMatcher
-      ? stackList.filter(stack => !this.ignoreStackMatcher.test(stack))
+    const filteredStack = this._ignoreStackMatcher
+      ? stackList.filter(stack => !this._ignoreStackMatcher.test(stack))
       : stackList;
-    return filteredStack.slice(0, this.stackLimit).join('\n');
+    return filteredStack.slice(0, this._stackLimit).join('\n');
   }
 
   _clearInterval() {
@@ -598,8 +370,8 @@ class Aggregator {
   }
 
   _setInterval() {
-    if (this.flushInterval) {
-      this._flushIntervalId = window.setInterval(this.sendAllRemainingEvents, this.flushInterval);
+    if (this._flushInterval) {
+      this._flushIntervalId = window.setInterval(this.sendAllRemainingEvents, this._flushInterval);
     }
   }
 
@@ -617,11 +389,11 @@ class Aggregator {
    * it doesn't already exist on the event
    * @private
    */
-  _finishEvent(existingEvent, newEventData) {
+  _finishEvent(existingEvent, newEventData = {}) {
     const event = assign({}, existingEvent, newEventData);
-    this._pendingEvents = this._pendingEvents.filter(ev => ev !== existingEvent);
-
-    this.sender.send(event);
+    if (shouldRecordEvent(event)) {
+      this.sender.send(event);
+    }
   }
 
   /**
@@ -631,127 +403,12 @@ class Aggregator {
    * @private
    */
   _startEvent(event) {
-    event.tabId = this._browserTabId;
+    const addlFields = {
+      tabId: this._browserTabId,
+      bts: this.getUnrelativeTime(event.start),
+    };
 
-    if (!Number.isInteger(event.start)) {
-      event.start = this.getRelativeTime();
-    }
-    event.bts = this.getUnrelativeTime(event.start);
-
-    if (event.cmp) {
-      const appName = this._getFromHandlers(event.cmp, 'getAppName');
-
-      if (appName) {
-        event.appName = appName;
-      }
-    }
-    this._pendingEvents.push(assign(event, this._defaultParams));
-
-    return event;
-  }
-
-  /**
-   * Determines which handler (Ext4/Legacy Dashboard) to use for the requested method
-   * @param cmp the component parameter used for the handler's method
-   * @param methodName the method being requested
-   * @private
-   */
-  _getFromHandlers(cmp, methodName) {
-    let result = null;
-
-    forEach(this.handlers, handler => {
-      result = handler[methodName](cmp);
-      return !result;
-    });
-
-    return result;
-  }
-
-  /**
-   * Finds the parent's event ID
-   * @param sourceCmp the component to get the parent's event ID for
-   * @private
-   */
-  _findParentId(sourceCmp, traceId) {
-    const hierarchy = this._getHierarchy(sourceCmp);
-    let eventId = traceId;
-
-    forEach(hierarchy, cmp => {
-      const parentEvent = this._findLastEvent(event => {
-        return (
-          event.eType !== 'dataRequest' &&
-          (event.cmp === cmp || event.cmp === sourceCmp) &&
-          event.tId === traceId
-        );
-      });
-      if (parentEvent) {
-        eventId = parentEvent.eId;
-        return false;
-      }
-    });
-
-    return eventId;
-  }
-
-  _getHierarchy(cmp) {
-    let cmpType = this.getComponentType(cmp);
-    const hierarchy = [];
-
-    while (cmpType) {
-      hierarchy.push(cmp);
-      cmp =
-        cmp.clientMetricsParent ||
-        cmp.ownerCt ||
-        cmp.owner ||
-        (cmp.initialConfig && cmp.initialConfig.owner);
-      cmpType = cmp && this.getComponentType(cmp);
-    }
-
-    return hierarchy;
-  }
-
-  _getHierarchyString(cmp) {
-    const hierarchy = this._getHierarchy(cmp);
-
-    if (hierarchy.length === 0) {
-      return 'none';
-    }
-
-    return hierarchy.map(c => this.getComponentType(c)).join(':');
-  }
-
-  /**
-   * Finds an event withing the pending events queue if one exists
-   * @param eventId the event's ID used to find a match within the pending events
-   * @private
-   */
-  _findPendingEvent(eventId) {
-    for (let i = 0; i < this._pendingEvents.length; i++) {
-      const ev = this._pendingEvents[i];
-      if (ev.eId === eventId) {
-        return ev;
-      }
-    }
-    return null;
-  }
-
-  _findLastEvent(predicate) {
-    for (let i = this._pendingEvents.length - 1; i >= 0; i--) {
-      const ev = this._pendingEvents[i];
-      if (predicate(ev)) {
-        return ev;
-      }
-    }
-    return null;
-  }
-
-  _shouldRecordEvent(existingEvent, options) {
-    if (options.whenLongerThan && options.stop - existingEvent.start <= options.whenLongerThan) {
-      this._pendingEvents = this._pendingEvents.filter(ev => ev !== existingEvent);
-      return false;
-    }
-
-    return true;
+    return assign(addlFields, event, this._defaultParams);
   }
 }
 
