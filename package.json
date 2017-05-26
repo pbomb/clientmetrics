@@ -12,7 +12,6 @@
     "build": "rollup --config --environment FORMAT:es && rollup --config --environment FORMAT:cjs && rollup --config --environment FORMAT:umd && rollup --config --environment MINIFY,FORMAT:umd",
     "lint:staged": "lint-staged",
     "prettier": "prettier --write --print-width=100 --single-quote=true --trailing-comma=es5 'src/**/*.js' 'rollup.config.js'",
-    "webpack:analyze": "webpack --debug --progress --config webpack.dev.config.js --json > webpack-stats.json",
     "prepublish": "npm run build && npm run lint && npm run test && npm run docs"
   },
   "lint-staged": {
@@ -76,8 +75,7 @@
     "rollup-plugin-node-resolve": "3.0.0",
     "rollup-plugin-replace": "1.1.1",
     "rollup-plugin-uglify": "1.0.2",
-    "sinon": "^2.2.0",
-    "webpack": "^2.5.1"
+    "sinon": "^2.2.0"
   },
   "dependencies": {
     "uuid": "3.0.1"

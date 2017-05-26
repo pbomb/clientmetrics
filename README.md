@@ -41,8 +41,8 @@ You can then use one of the module formats:
   itself as a [umd][umd] module which is consumable in several environments, the
   most notable as a global.
 - `jsnext:main` and `module`: `dist/rallymetrics.es.js` - exports itself using the
-  ES modules specification, you'll need to configure webpack to make use of this
-  file do this using the [resolve.mainFields][mainFields] property.
+  ES modules specification, you'll need to configure your bundler to make use of this
+  file. For example with webpack, do this using the [resolve.mainFields][mainFields] property.
 
 The most common use-case is consuming this module via CommonJS:
 

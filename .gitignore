@@ -42,4 +42,3 @@ test/rallymetrics-test*
 doc/
 corsSandbox/cert.pem
 corsSandbox/key.pem
-webpack-stats.json
